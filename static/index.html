@@ -2,275 +2,1773 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Fase 1 — Validação da Fundação</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Talão — Gestão de Custos e Preços</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #241A12; }
-  h1 { font-size: 1.3rem; } h2 { font-size: 1.05rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: .3rem; }
-  input, select, button { font-size: 1rem; padding: .5rem; margin: .25rem 0; width: 100%; box-sizing: border-box; }
-  button { background: #E56A2E; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  button.secondary { background: #999; }
-  .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
-  #app-area { display: none; }
-  .card { background: #f7f5f3; border-radius: 8px; padding: 1rem; margin: .75rem 0; }
-  .status-aberto { color: #1a7a1a; font-weight: bold; }
-  .status-fechado { color: #888; font-weight: bold; }
-  pre { background: #222; color: #0f0; padding: .5rem; font-size: .8rem; overflow-x: auto; border-radius: 4px; }
-  .error { color: #c0392b; }
+/* ============================================================
+   TALÃO — sistema visual
+   Referência: quadro de açougue / talão de comanda de lanchonete.
+   Serifa robusta (baixo contraste) pros títulos, sem-serifa limpa
+   pro corpo, mono só pra números de dinheiro (alinhamento tabular).
+   ============================================================ */
+:root {
+  --ink: #211C16;
+  --ink-soft: #6B6154;
+  --ink-faint: #A79C8A;
+  --paper: #F3EEE3;
+  --paper-raised: #FFFEFA;
+  --line: #DDD3BF;
+  --line-strong: #C7BA9E;
+  --amber: #B5790A;
+  --amber-dark: #8F5F08;
+  --amber-tint: #F3E1BC;
+  --forest: #33512E;
+  --forest-tint: #DEE8D6;
+  --brick: #9A3324;
+  --brick-tint: #F3DCD5;
+  --sidebar: #211C16;
+  --sidebar-text: #D9CEBA;
+  --sidebar-text-dim: #8A7F6C;
+  --sidebar-active: #332B20;
+  --radius: 3px;
+  --shadow: 0 1px 2px rgba(33,28,22,0.08), 0 4px 12px rgba(33,28,22,0.06);
+  --font-display: 'Roboto Slab', serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; margin: 0; color: var(--ink); }
+p { margin: 0; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+a { color: var(--amber-dark); }
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* --- Layout raiz --- */
+#auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#app-screen { display: none; min-height: 100vh; }
+#app-screen.visible { display: flex; }
+
+/* --- Tela de autenticação --- */
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+}
+.auth-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.auth-brand .mark {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.auth-brand .tagline {
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--line-strong);
+  padding-left: 10px;
+}
+.auth-panel {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink-faint);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.auth-tab.active { color: var(--ink); border-bottom-color: var(--amber); }
+.auth-form { display: none; flex-direction: column; gap: 12px; }
+.auth-form.active { display: flex; }
+.auth-error {
+  background: var(--brick-tint);
+  color: var(--brick);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13.5px;
+  display: none;
+}
+.auth-error.visible { display: block; }
+
+/* --- Campos --- */
+label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); display: block; margin-bottom: 4px; }
+.field { display: flex; flex-direction: column; }
+input[type=text], input[type=email], input[type=password], input[type=number], input[type=datetime-local], select, textarea {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--amber); }
+input::placeholder { color: var(--ink-faint); }
+.field-row { display: flex; gap: 10px; }
+.field-row > * { flex: 1; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-soft); }
+
+/* --- Botões --- */
+button.btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--amber); color: #FFFDF8; }
+.btn-primary:hover:not(:disabled) { background: var(--amber-dark); }
+.btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--line-strong) !important; }
+.btn-secondary:hover:not(:disabled) { background: var(--paper); border-color: var(--ink-faint) !important; }
+.btn-danger { background: transparent; color: var(--brick); border: 1px solid var(--brick-tint) !important; }
+.btn-danger:hover:not(:disabled) { background: var(--brick-tint); }
+.btn-block { width: 100%; }
+.btn-sm { padding: 6px 10px; font-size: 12.5px; }
+.btn-link { background: none; border: none; color: var(--amber-dark); font-weight: 600; cursor: pointer; padding: 0; }
+
+/* --- Shell do app --- */
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+}
+.sidebar-brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: #FFFEFA;
+  padding: 0 20px 18px;
+  border-bottom: 1px solid #3A3226;
+  margin-bottom: 8px;
+}
+.sidebar-business { padding: 12px 20px 16px; border-bottom: 1px solid #3A3226; margin-bottom: 10px; }
+.sidebar-business .name { font-weight: 600; color: #FFFEFA; font-size: 14px; }
+.sidebar-business .segment { font-size: 12px; color: var(--sidebar-text-dim); margin-top: 2px; }
+.sidebar-nav { flex: 1; overflow-y: auto; }
+.sidebar-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--sidebar-text-dim);
+  padding: 14px 20px 6px;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  border-left: 3px solid transparent;
+}
+.sidebar-item:hover { background: var(--sidebar-active); }
+.sidebar-item.active { background: var(--sidebar-active); border-left-color: var(--amber); color: #FFFEFA; }
+.sidebar-item .icon { width: 16px; text-align: center; opacity: 0.85; }
+.sidebar-footer { padding: 14px 20px 0; border-top: 1px solid #3A3226; margin-top: 8px; }
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+.main-header {
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-raised);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.main-header h1 { font-size: 22px; }
+.main-header .subtitle { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.main-body { flex: 1; overflow-y: auto; padding: 28px 32px 60px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* --- Componentes de conteúdo --- */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.card + .card { margin-top: 16px; }
+.card h3 { font-size: 15px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.card h3 .count { font-family: var(--font-mono); font-weight: 500; color: var(--ink-faint); font-size: 13px; }
+
+.stat {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.stat .label { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+.stat .value { font-family: var(--font-mono); font-size: 26px; font-weight: 600; margin-top: 4px; }
+.stat .value.positive { color: var(--forest); }
+.stat .value.negative { color: var(--brick); }
+
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.data-table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--line-strong);
+}
+table.data-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.data-table td.num, table.data-table th.num { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+table.data-table tr:last-child td { border-bottom: none; }
+table.data-table tr:hover td { background: var(--paper); }
+.table-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.table-wrap { overflow-x: auto; }
+
+.pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.pill-ok { background: var(--forest-tint); color: var(--forest); }
+.pill-warn { background: var(--amber-tint); color: var(--amber-dark); }
+.pill-bad { background: var(--brick-tint); color: var(--brick); }
+.pill-neutral { background: var(--line); color: var(--ink-soft); }
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+}
+.empty-state .big { font-family: var(--font-display); font-size: 17px; color: var(--ink); margin-bottom: 6px; }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: #FFFEFA;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+  max-width: 480px;
+  box-shadow: var(--shadow);
+}
+.toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.toast-error { background: var(--brick); }
+.toast.toast-ok { background: var(--forest); }
+
+.modal-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(33,28,22,0.45);
+  align-items: center; justify-content: center;
+  z-index: 500;
+  padding: 20px;
+}
+.modal-backdrop.visible { display: flex; }
+.modal {
+  background: var(--paper-raised);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 560px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h3 { font-size: 16px; }
+.modal-close { background: none; border: none; font-size: 20px; color: var(--ink-soft); cursor: pointer; line-height: 1; padding: 4px; }
+.modal-body { padding: 20px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.modal-footer { padding: 16px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 10px; }
+
+.hint { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.section-intro { color: var(--ink-soft); font-size: 13.5px; margin-bottom: 20px; max-width: 640px; }
+.divider { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
+.receipt-line { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed var(--line-strong); font-size: 13.5px; }
+.receipt-line:last-child { border-bottom: none; }
+.receipt-line .label { color: var(--ink-soft); }
+.receipt-line .value { font-family: var(--font-mono); font-weight: 600; }
+.receipt-line.total { border-top: 2px solid var(--ink); border-bottom: none; margin-top: 6px; padding-top: 12px; font-weight: 700; }
+.receipt-line.total .value { font-size: 17px; }
+
+.loading-spinner { text-align: center; padding: 40px; color: var(--ink-faint); font-size: 13px; }
 </style>
 </head>
 <body>
 
-<h1>Fase 1 — Banco + Auth + FinancialPeriod (validação mínima)</h1>
-<p style="color:#888;font-size:.85rem;">Esta tela existe só para validar o fluxo — não é o produto final.</p>
+<!-- ===================== TELA DE AUTENTICAÇÃO ===================== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="mark">Talão</span>
+      <span class="tagline">custo, estoque e preço — sem chute</span>
+    </div>
+    <div class="auth-panel">
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-tab="login">Entrar</div>
+        <div class="auth-tab" data-tab="signup">Criar conta</div>
+      </div>
+      <div class="auth-error" id="auth-error"></div>
 
-<div id="auth-area">
-  <h2>Cadastro (cria Business novo)</h2>
-  <input id="su-business" placeholder="Nome do negócio">
-  <select id="su-segment">
-    <option value="hamburgueria">Hamburgueria</option>
-    <option value="pizzaria">Pizzaria</option>
-    <option value="restaurante">Restaurante</option>
-    <option value="delivery">Delivery</option>
-    <option value="outro">Outro</option>
-  </select>
-  <input id="su-timezone" placeholder="Timezone IANA" value="America/Sao_Paulo">
-  <input id="su-email" placeholder="E-mail">
-  <input id="su-password" type="password" placeholder="Senha (mín. 8 caracteres)">
-  <button onclick="signup()">Criar negócio e conta</button>
+      <form class="auth-form active" id="form-login" data-tab="login">
+        <div class="field"><label>E-mail</label><input type="email" id="li-email" required></div>
+        <div class="field"><label>Senha</label><input type="password" id="li-password" required></div>
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      </form>
 
-  <h2>Login</h2>
-  <input id="li-email" placeholder="E-mail">
-  <input id="li-password" type="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
-
-  <p class="error" id="auth-error"></p>
+      <form class="auth-form" id="form-signup" data-tab="signup">
+        <div class="field"><label>Nome do negócio</label><input type="text" id="su-business" placeholder="Ex: Hamburgueria do João" required></div>
+        <div class="field-row">
+          <div class="field"><label>Segmento</label>
+            <select id="su-segment">
+              <option value="hamburgueria">Hamburgueria</option>
+              <option value="pizzaria">Pizzaria</option>
+              <option value="restaurante">Restaurante</option>
+              <option value="delivery">Delivery</option>
+              <option value="dark_kitchen">Dark Kitchen</option>
+              <option value="cafeteria">Cafeteria</option>
+              <option value="acaiteria">Açaiteria</option>
+              <option value="confeitaria">Confeitaria</option>
+              <option value="marmitaria">Marmitaria</option>
+              <option value="food_truck">Food Truck</option>
+              <option value="pastelaria">Pastelaria</option>
+              <option value="sorveteria">Sorveteria</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="field"><label>Fuso horário</label><input type="text" id="su-timezone" value="America/Sao_Paulo" required></div>
+        </div>
+        <div class="field"><label>E-mail</label><input type="email" id="su-email" required></div>
+        <div class="field"><label>Senha (mínimo 8 caracteres)</label><input type="password" id="su-password" minlength="8" required></div>
+        <button type="submit" class="btn btn-primary btn-block">Criar negócio e conta</button>
+      </form>
+    </div>
+  </div>
 </div>
 
-<div id="app-area">
-  <div class="row">
-    <button class="secondary" onclick="logout()">Sair (logout)</button>
-  </div>
-
-  <h2>Negócio</h2>
-  <div class="card" id="business-card">carregando...</div>
-
-  <h2>Configuração Operacional</h2>
-  <div class="card" id="config-card">carregando...</div>
-
-  <h2>Período Financeiro</h2>
-  <div class="card" id="period-card">carregando...</div>
-  <button onclick="closePeriod()">Fechar período atual</button>
-
-  <h2>Insumos</h2>
-  <div class="card">
-    <div class="row">
-      <input id="ing-nome" placeholder="Nome do insumo (ex: Carne bovina)">
-      <select id="ing-unidade">
-        <option value="kg">kg</option>
-        <option value="g">g</option>
-        <option value="L">L</option>
-        <option value="ml">ml</option>
-        <option value="un">un</option>
-      </select>
+<!-- ===================== APP ===================== -->
+<div id="app-screen">
+  <aside class="sidebar">
+    <div class="sidebar-brand">Talão</div>
+    <div class="sidebar-business">
+      <div class="name" id="sb-business-name">—</div>
+      <div class="segment" id="sb-business-segment">—</div>
     </div>
-    <div class="row">
-      <input id="ing-perda" type="number" step="0.01" placeholder="Perda % (opcional, ex: 10)">
-      <input id="ing-estoque-min" type="number" step="0.001" placeholder="Estoque mínimo (opcional)">
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-item" id="nav-logout"><span class="icon">⏻</span> Sair</div>
     </div>
-    <button onclick="criarInsumo()">Adicionar insumo</button>
-  </div>
-  <div id="lista-insumos"></div>
+  </aside>
 
-  <h2>Resposta bruta da API (debug)</h2>
-  <pre id="debug">—</pre>
+  <div class="main">
+    <header class="main-header">
+      <div>
+        <h1 id="section-title">—</h1>
+        <div class="subtitle" id="section-subtitle"></div>
+      </div>
+      <div id="header-extra"></div>
+    </header>
+    <div class="main-body" id="main-body">
+      <div class="section" id="section-visao-geral"></div>
+      <div class="section" id="section-insumos"></div>
+      <div class="section" id="section-fornecedores"></div>
+      <div class="section" id="section-fichas-tecnicas"></div>
+      <div class="section" id="section-produtos"></div>
+      <div class="section" id="section-canais"></div>
+      <div class="section" id="section-compras"></div>
+      <div class="section" id="section-vendas"></div>
+      <div class="section" id="section-estoque"></div>
+      <div class="section" id="section-promocoes"></div>
+      <div class="section" id="section-custos-fixos"></div>
+      <div class="section" id="section-despesas"></div>
+      <div class="section" id="section-fechamento"></div>
+    </div>
+  </div>
 </div>
 
-<div class="card" id="modal-preco" style="display:none; position:fixed; top:60px; left:0; right:0; margin:auto; max-width:600px; box-shadow:0 4px 20px rgba(0,0,0,0.3); background:white;">
-  <h3 id="modal-preco-titulo">Preços</h3>
-  <div class="row">
-    <input id="preco-valor" type="number" step="0.01" placeholder="Preço pago (R$), ex: 120.00">
-    <input id="preco-qtd" type="number" step="0.001" placeholder="Quantidade comprada">
+<div class="toast" id="toast"></div>
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">—</h3>
+      <button class="modal-close" id="modal-close">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
   </div>
-  <button onclick="registrarPreco()">Registrar novo preço</button>
-  <div id="preco-historico"></div>
-  <button class="secondary" onclick="fecharModalPreco()">Fechar</button>
 </div>
 
 <script>
-const API = "";
-let token = localStorage.getItem("fase1_token") || null;
+// ============================================================
+// TALÃO — núcleo (estado, API, autenticação, navegação)
+// ============================================================
+const state = {
+  token: localStorage.getItem('talao_token') || null,
+  business: null,
+  config: null,
+  period: null,
+  section: 'visao-geral',
+  cache: {}, // cache leve por seção, invalidado ao navegar de volta
+};
 
-function headers() {
-  return token ? { "Authorization": "Bearer " + token, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
-}
-
-function showDebug(obj) { document.getElementById("debug").textContent = JSON.stringify(obj, null, 2); }
-
-async function signup() {
-  const body = {
-    business_name: document.getElementById("su-business").value,
-    segment: document.getElementById("su-segment").value,
-    timezone: document.getElementById("su-timezone").value,
-    email: document.getElementById("su-email").value,
-    password: document.getElementById("su-password").value,
-  };
-  const resp = await fetch("/auth/signup", { method: "POST", headers: headers(), body: JSON.stringify(body) });
-  const data = await resp.json();
-  if (!resp.ok) { document.getElementById("auth-error").textContent = JSON.stringify(data); return; }
-  token = data.access_token;
-  localStorage.setItem("fase1_token", token);
-  enterApp();
-}
-
-async function login() {
-  const body = { email: document.getElementById("li-email").value, password: document.getElementById("li-password").value };
-  const resp = await fetch("/auth/login", { method: "POST", headers: headers(), body: JSON.stringify(body) });
-  const data = await resp.json();
-  if (!resp.ok) { document.getElementById("auth-error").textContent = JSON.stringify(data); return; }
-  token = data.access_token;
-  localStorage.setItem("fase1_token", token);
-  enterApp();
-}
-
-async function logout() {
-  await fetch("/auth/logout", { method: "POST", headers: headers() });
-  token = null;
-  localStorage.removeItem("fase1_token");
-  document.getElementById("auth-area").style.display = "block";
-  document.getElementById("app-area").style.display = "none";
-}
-
-async function closePeriod() {
-  const idempotencyKey = crypto.randomUUID();
-  const resp = await fetch("/financial-period/close", { method: "POST", headers: headers(), body: JSON.stringify({ idempotency_key: idempotencyKey }) });
-  const data = await resp.json();
-  showDebug(data);
-  await refreshAll();
-}
-
-async function refreshAll() {
-  const b = await (await fetch("/business/me", { headers: headers() })).json();
-  document.getElementById("business-card").innerHTML = `
-    <b>${b.name}</b><br>Segmento: ${b.segment}<br>Moeda: ${b.currency}<br>Timezone: ${b.timezone}<br>Criado em: ${b.created_at}`;
-
-  const c = await (await fetch("/operation-config", { headers: headers() })).json();
-  document.getElementById("config-card").innerHTML = `
-    Método de rateio: ${c.metodo_rateio}<br>
-    Imposto padrão: ${c.imposto_percentual}%<br>
-    Margem alvo alta/baixa: ${c.margem_alvo_alta}% / ${c.margem_alvo_baixa}%<br>
-    Margem perigosa: ${c.margem_perigosa}%<br>
-    Contribuição alvo alta/baixa: ${c.contrib_alvo_alta}% / ${c.contrib_alvo_baixa}%`;
-
-  const p = await (await fetch("/financial-period/current", { headers: headers() })).json();
-  const statusClass = p.status === "ABERTO" ? "status-aberto" : "status-fechado";
-  document.getElementById("period-card").innerHTML = `
-    Status: <span class="${statusClass}">${p.status}</span><br>
-    Início: ${p.data_hora_inicio}<br>
-    Fim: ${p.data_hora_fim || "—"}<br>
-    ID: <code>${p.id}</code>`;
-
-  await refreshInsumos();
-}
-
-async function criarInsumo() {
-  const body = {
-    nome: document.getElementById("ing-nome").value,
-    unidade_compra: document.getElementById("ing-unidade").value,
-  };
-  const perda = document.getElementById("ing-perda").value;
-  const estoqueMin = document.getElementById("ing-estoque-min").value;
-  if (perda !== "") body.perda_percentual = parseFloat(perda);
-  if (estoqueMin !== "") body.estoque_minimo = parseFloat(estoqueMin);
-
-  const resp = await fetch("/ingredients", { method: "POST", headers: headers(), body: JSON.stringify(body) });
-  const data = await resp.json();
-  showDebug(data);
-  if (resp.ok) {
-    document.getElementById("ing-nome").value = "";
-    document.getElementById("ing-perda").value = "";
-    document.getElementById("ing-estoque-min").value = "";
-    await refreshInsumos();
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+  const resp = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+  let data = null;
+  try { data = await resp.json(); } catch (e) { /* sem corpo, ex: 204 */ }
+  if (!resp.ok) {
+    const msg = (data && data.detail) ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : `Erro ${resp.status}`;
+    throw new Error(msg);
   }
+  return data;
 }
 
-async function arquivarInsumo(id) {
-  const resp = await fetch(`/ingredients/${id}/archive`, { method: "POST", headers: headers() });
-  showDebug(await resp.json());
-  await refreshInsumos();
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast visible toast-${type}`;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('visible'), 3800);
 }
 
-async function refreshInsumos() {
-  const resp = await fetch("/ingredients", { headers: headers() });
-  const insumos = await resp.json();
-  const div = document.getElementById("lista-insumos");
-  if (insumos.length === 0) {
-    div.innerHTML = "<p style='color:#888'>Nenhum insumo cadastrado ainda.</p>";
-    return;
-  }
-  div.innerHTML = insumos.map(i => `
-    <div class="card">
-      <b>${i.nome}</b> (${i.unidade_compra})<br>
-      Perda: ${i.perda_percentual}% ${i.estoque_minimo !== null ? "· Estoque mínimo: " + i.estoque_minimo : ""}<br>
-      <button onclick="abrirModalPreco('${i.id}', '${i.nome}', '${i.unidade_compra}')">Ver/Registrar preço</button>
-      <button class="secondary" onclick="arquivarInsumo('${i.id}')">Arquivar</button>
-    </div>
-  `).join("");
+function money(centavos) {
+  if (centavos === null || centavos === undefined) return '—';
+  const sign = centavos < 0 ? '-' : '';
+  const v = Math.abs(centavos) / 100;
+  return `${sign}R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function pct(v) {
+  if (v === null || v === undefined) return '—';
+  return `${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`;
+}
+function qtyLabel(q, unidade) {
+  const n = Number(q);
+  return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${unidade || ''}`.trim();
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-let insumoAtualId = null;
-
-async function abrirModalPreco(id, nome, unidade) {
-  insumoAtualId = id;
-  document.getElementById("modal-preco-titulo").textContent = `Preços de "${nome}" (comprado em ${unidade})`;
-  document.getElementById("modal-preco").style.display = "block";
-  await atualizarHistoricoPreco();
-}
-
-function fecharModalPreco() {
-  document.getElementById("modal-preco").style.display = "none";
-  insumoAtualId = null;
-}
-
-async function registrarPreco() {
-  const valorReais = parseFloat(document.getElementById("preco-valor").value);
-  const qtd = parseFloat(document.getElementById("preco-qtd").value);
-  const centavos = Math.round(valorReais * 100);
-  const resp = await fetch(`/ingredients/${insumoAtualId}/prices`, {
-    method: "POST", headers: headers(),
-    body: JSON.stringify({ preco_pago_centavos: centavos, quantidade_comprada: qtd }),
+// --- Modal genérico ---
+function openModal(title, bodyHtml, footerButtons) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  const footer = document.getElementById('modal-footer');
+  footer.innerHTML = '';
+  (footerButtons || []).forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${b.cls || 'btn-secondary'}`;
+    btn.textContent = b.label;
+    btn.onclick = b.onClick;
+    footer.appendChild(btn);
   });
-  const data = await resp.json();
-  showDebug(data);
-  if (resp.ok) {
-    document.getElementById("preco-valor").value = "";
-    document.getElementById("preco-qtd").value = "";
-    await atualizarHistoricoPreco();
+  document.getElementById('modal-backdrop').classList.add('visible');
+}
+function closeModal() { document.getElementById('modal-backdrop').classList.remove('visible'); }
+document.getElementById('modal-close').onclick = closeModal;
+document.getElementById('modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'modal-backdrop') closeModal(); });
+
+function uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// --- Autenticação ---
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelector(`.auth-form[data-tab="${tab.dataset.tab}"]`).classList.add('active');
+    document.getElementById('auth-error').classList.remove('visible');
+  };
+});
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+document.getElementById('form-login').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api('/auth/login', { method: 'POST', body: JSON.stringify({
+      email: document.getElementById('li-email').value,
+      password: document.getElementById('li-password').value,
+    })});
+    state.token = data.access_token;
+    localStorage.setItem('talao_token', state.token);
+    await bootApp();
+  } catch (err) { showAuthError(err.message); }
+};
+
+document.getElementById('form-signup').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api('/auth/signup', { method: 'POST', body: JSON.stringify({
+      business_name: document.getElementById('su-business').value,
+      segment: document.getElementById('su-segment').value,
+      timezone: document.getElementById('su-timezone').value,
+      email: document.getElementById('su-email').value,
+      password: document.getElementById('su-password').value,
+    })});
+    state.token = data.access_token;
+    localStorage.setItem('talao_token', state.token);
+    await bootApp();
+  } catch (err) { showAuthError(err.message); }
+};
+
+document.getElementById('nav-logout').onclick = async () => {
+  try { await api('/auth/logout', { method: 'POST' }); } catch (e) {}
+  state.token = null;
+  localStorage.removeItem('talao_token');
+  document.getElementById('app-screen').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+};
+
+// --- Navegação lateral ---
+const NAV_STRUCTURE = [
+  { id: 'visao-geral', label: 'Visão geral', icon: '◆', group: null },
+  { id: 'insumos', label: 'Insumos', icon: '▤', group: 'Cadastros' },
+  { id: 'fornecedores', label: 'Fornecedores', icon: '▤', group: 'Cadastros' },
+  { id: 'fichas-tecnicas', label: 'Fichas técnicas', icon: '▤', group: 'Cadastros' },
+  { id: 'produtos', label: 'Produtos', icon: '▤', group: 'Cadastros' },
+  { id: 'canais', label: 'Canais de venda', icon: '▤', group: 'Cadastros' },
+  { id: 'compras', label: 'Compras', icon: '▸', group: 'Operação' },
+  { id: 'vendas', label: 'Vendas', icon: '▸', group: 'Operação' },
+  { id: 'estoque', label: 'Estoque', icon: '▸', group: 'Operação' },
+  { id: 'promocoes', label: 'Promoções', icon: '▸', group: 'Operação' },
+  { id: 'custos-fixos', label: 'Custos fixos', icon: '$', group: 'Financeiro' },
+  { id: 'despesas', label: 'Despesas', icon: '$', group: 'Financeiro' },
+  { id: 'fechamento', label: 'Fechamento', icon: '$', group: 'Financeiro' },
+];
+
+function renderSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  let html = '';
+  let currentGroup = null;
+  NAV_STRUCTURE.forEach(item => {
+    if (item.group !== currentGroup) {
+      currentGroup = item.group;
+      if (currentGroup) html += `<div class="sidebar-group-label">${esc(currentGroup)}</div>`;
+    }
+    html += `<div class="sidebar-item" data-section="${item.id}"><span class="icon">${item.icon}</span> ${esc(item.label)}</div>`;
+  });
+  nav.innerHTML = html;
+  nav.querySelectorAll('.sidebar-item').forEach(el => {
+    el.onclick = () => goToSection(el.dataset.section);
+  });
+}
+
+const SECTION_META = {
+  'visao-geral': ['Visão geral', 'Seu negócio, configuração e o período financeiro atual'],
+  'insumos': ['Insumos', 'Ingredientes, preço e estoque de cada um'],
+  'fornecedores': ['Fornecedores', 'De quem você compra'],
+  'fichas-tecnicas': ['Fichas técnicas', 'A receita de cada produto, com custo calculado'],
+  'produtos': ['Produtos', 'O que aparece pro cliente — simples, combo ou pizza'],
+  'canais': ['Canais de venda', 'Presencial, delivery próprio, iFood — cada um com suas taxas'],
+  'compras': ['Compras', 'Registrar compra dá entrada automática no estoque'],
+  'vendas': ['Vendas', 'Registrar, cancelar e devolver vendas'],
+  'estoque': ['Estoque', 'Perda, consumo interno e ajuste manual'],
+  'promocoes': ['Promoções', 'Desconto e subsídio de canal'],
+  'custos-fixos': ['Custos fixos', 'Aluguel, salários fixos — mensal'],
+  'despesas': ['Despesas', 'Financeiras e não-operacionais'],
+  'fechamento': ['Fechamento', 'O resultado real do período: da venda ao lucro líquido'],
+};
+
+async function goToSection(id) {
+  state.section = id;
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.toggle('active', el.dataset.section === id));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  const [title, subtitle] = SECTION_META[id] || [id, ''];
+  document.getElementById('section-title').textContent = title;
+  document.getElementById('section-subtitle').textContent = subtitle;
+  document.getElementById('header-extra').innerHTML = '';
+  const sectionEl = document.getElementById(`section-${id}`);
+  if (sectionEl) sectionEl.classList.add('active');
+  const renderer = SECTION_RENDERERS[id];
+  if (renderer) await renderer();
+}
+
+const SECTION_RENDERERS = {};
+
+// --- Boot ---
+async function bootApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').classList.add('visible');
+  renderSidebar();
+  try {
+    state.business = await api('/business/me');
+    state.config = await api('/operation-config');
+    state.period = await api('/financial-period/current');
+    document.getElementById('sb-business-name').textContent = state.business.name;
+    document.getElementById('sb-business-segment').textContent = state.business.segment;
+    await goToSection('visao-geral');
+  } catch (err) {
+    toast('Sessão expirada, entre de novo.', 'error');
+    state.token = null;
+    localStorage.removeItem('talao_token');
+    document.getElementById('app-screen').classList.remove('visible');
+    document.getElementById('auth-screen').style.display = 'flex';
   }
 }
 
-async function atualizarHistoricoPreco() {
-  const resp = await fetch(`/ingredients/${insumoAtualId}/prices`, { headers: headers() });
-  const historico = await resp.json();
-  const div = document.getElementById("preco-historico");
-  if (historico.length === 0) {
-    div.innerHTML = "<p style='color:#888'>Nenhum preço registrado ainda.</p>";
+if (state.token) { bootApp(); }
+
+// ============================================================
+// VISÃO GERAL
+// ============================================================
+SECTION_RENDERERS['visao-geral'] = async function () {
+  state.business = await api('/business/me');
+  state.config = await api('/operation-config');
+  state.period = await api('/financial-period/current');
+  document.getElementById('sb-business-name').textContent = state.business.name;
+  document.getElementById('sb-business-segment').textContent = state.business.segment;
+
+  const b = state.business, c = state.config, p = state.period;
+  const el = document.getElementById('section-visao-geral');
+  el.innerHTML = `
+    <div class="grid-3" style="margin-bottom:20px;">
+      <div class="stat"><div class="label">Período financeiro</div>
+        <div class="value" style="font-size:18px;">${p.status === 'ABERTO' ? '<span class=\"pill pill-ok\">ABERTO</span>' : '<span class=\"pill pill-neutral\">FECHADO</span>'}</div>
+        <div class="hint">desde ${fmtDate(p.data_hora_inicio)}</div>
+      </div>
+      <div class="stat"><div class="label">Moeda / fuso</div><div class="value" style="font-size:18px;">${esc(b.currency)} · ${esc(b.timezone)}</div></div>
+      <div class="stat"><div class="label">Método de rateio</div><div class="value" style="font-size:18px;">${esc(c.metodo_rateio)}</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>${esc(b.name)}</h3>
+        <div class="receipt-line"><span class="label">Segmento</span><span class="value">${esc(b.segment)}</span></div>
+        <div class="receipt-line"><span class="label">Criado em</span><span class="value">${fmtDate(b.created_at)}</span></div>
+      </div>
+      <div class="card">
+        <h3>Configuração operacional <button class="btn btn-sm btn-secondary" style="float:right" onclick="openConfigModal()">Editar</button></h3>
+        <div class="receipt-line"><span class="label">Imposto padrão</span><span class="value">${pct(c.imposto_percentual)}</span></div>
+        <div class="receipt-line"><span class="label">Custo por hora de funcionário</span><span class="value">${money(c.custo_hora_funcionario_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">Margem alvo alta / baixa</span><span class="value">${pct(c.margem_alvo_alta)} / ${pct(c.margem_alvo_baixa)}</span></div>
+        <div class="receipt-line"><span class="label">Margem perigosa</span><span class="value">${pct(c.margem_perigosa)}</span></div>
+        <div class="receipt-line"><span class="label">Aliquota de imposto sobre lucro</span><span class="value">${c.aliquota_imposto_lucro !== null ? pct(c.aliquota_imposto_lucro) : '—'}</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Período financeiro</h3>
+      <div class="receipt-line"><span class="label">Status</span><span class="value">${p.status}</span></div>
+      <div class="receipt-line"><span class="label">Início</span><span class="value">${fmtDate(p.data_hora_inicio)}</span></div>
+      <div class="receipt-line"><span class="label">Fim</span><span class="value">${fmtDate(p.data_hora_fim)}</span></div>
+      <div style="margin-top:14px;">
+        <button class="btn btn-primary" onclick="fecharPeriodo()">Fechar período atual e abrir o próximo</button>
+      </div>
+    </div>
+  `;
+};
+
+function openConfigModal() {
+  const c = state.config;
+  openModal('Editar configuração operacional', `
+    <div class="field-row">
+      <div class="field"><label>Imposto padrão (%)</label><input type="number" step="0.01" id="cfg-imposto" value="${c.imposto_percentual}"></div>
+      <div class="field"><label>Custo/hora funcionário (R$)</label><input type="number" step="0.01" id="cfg-custo-hora" value="${(c.custo_hora_funcionario_centavos/100).toFixed(2)}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Margem alvo alta (%)</label><input type="number" step="0.01" id="cfg-margem-alta" value="${c.margem_alvo_alta}"></div>
+      <div class="field"><label>Margem alvo baixa (%)</label><input type="number" step="0.01" id="cfg-margem-baixa" value="${c.margem_alvo_baixa}"></div>
+    </div>
+    <div class="field"><label>Alíquota de imposto sobre lucro (%, opcional)</label><input type="number" step="0.01" id="cfg-aliquota" value="${c.aliquota_imposto_lucro ?? ''}" placeholder="Deixe em branco se não souber ainda"></div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Salvar', cls: 'btn-primary', onClick: async () => {
+      const aliq = document.getElementById('cfg-aliquota').value;
+      try {
+        await api('/operation-config', { method: 'PATCH', body: JSON.stringify({
+          imposto_percentual: parseFloat(document.getElementById('cfg-imposto').value),
+          custo_hora_funcionario_centavos: Math.round(parseFloat(document.getElementById('cfg-custo-hora').value) * 100),
+          margem_alvo_alta: parseFloat(document.getElementById('cfg-margem-alta').value),
+          margem_alvo_baixa: parseFloat(document.getElementById('cfg-margem-baixa').value),
+          aliquota_imposto_lucro: aliq === '' ? null : parseFloat(aliq),
+        })});
+        closeModal();
+        toast('Configuração atualizada.');
+        goToSection('visao-geral');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+
+async function fecharPeriodo() {
+  if (!confirm('Fechar o período atual? Um novo período abre automaticamente.')) return;
+  try {
+    const novo = await api('/financial-period/close', { method: 'POST', body: JSON.stringify({ idempotency_key: uuid() }) });
+    toast(`Período fechado. Novo período aberto às ${fmtDate(novo.data_hora_inicio)}.`);
+    goToSection('visao-geral');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// INSUMOS
+// ============================================================
+SECTION_RENDERERS['insumos'] = async function () {
+  const el = document.getElementById('section-insumos');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openIngredientModal()">+ Novo insumo</button>`;
+  el.innerHTML = `<div class="loading-spinner">Carregando…</div>`;
+  const list = await api('/ingredients?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhum insumo cadastrado ainda</div>Insumos são os ingredientes que você compra — carne, pão, queijo. Cadastre o primeiro pra começar.</div>`;
     return;
   }
-  div.innerHTML = "<b>Histórico (mais recente primeiro):</b>" + historico.map((h, idx) => {
-    const custoPorBase = (h.custo_por_base_milicentavos / 100000).toFixed(4);
-    const atual = idx === 0 ? " ← preço atual" : "";
-    return `<div>R$${(h.preco_pago_centavos/100).toFixed(2)} por ${h.quantidade_comprada} → R$${custoPorBase}/unidade-base${atual}</div>`;
-  }).join("");
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th>Unidade</th><th class="num">Perda</th><th class="num">Estoque atual</th><th class="num">Estoque mínimo</th><th></th></tr></thead>
+    <tbody>${list.map(i => `
+      <tr>
+        <td>${esc(i.nome)}</td>
+        <td>${esc(i.unidade_compra)}</td>
+        <td class="num">${pct(i.perda_percentual)}</td>
+        <td class="num">${qtyLabel(i.estoque_atual, i.unidade_estoque)}</td>
+        <td class="num">${i.estoque_minimo !== null ? qtyLabel(i.estoque_minimo, i.unidade_estoque) : '—'}</td>
+        <td class="table-actions">
+          <button class="btn btn-sm btn-secondary" onclick="openIngredientPriceModal('${i.id}', '${esc(i.nome)}', '${i.unidade_compra}')">Preço</button>
+          <button class="btn btn-sm btn-secondary" onclick="openIngredientMovementsModal('${i.id}', '${esc(i.nome)}')">Estoque</button>
+          <button class="btn btn-sm btn-secondary" onclick="openIngredientModal('${i.id}')">Editar</button>
+          <button class="btn btn-sm btn-danger" onclick="archiveIngredient('${i.id}')">Arquivar</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+};
+
+async function openIngredientModal(id) {
+  let ing = { nome: '', unidade_compra: 'kg', perda_percentual: 0, estoque_minimo: '' };
+  if (id) ing = await api(`/ingredients/${id}`);
+  openModal(id ? 'Editar insumo' : 'Novo insumo', `
+    <div class="field"><label>Nome</label><input type="text" id="ing-nome" value="${esc(ing.nome)}" placeholder="Ex: Carne bovina"></div>
+    <div class="field-row">
+      <div class="field"><label>Unidade de compra</label>
+        <select id="ing-unidade" ${id ? 'disabled' : ''}>
+          ${['kg','g','L','ml','un'].map(u => `<option value="${u}" ${ing.unidade_compra===u?'selected':''}>${u}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Perda no preparo (%)</label><input type="number" step="0.01" id="ing-perda" value="${ing.perda_percentual}"></div>
+    </div>
+    <div class="field"><label>Estoque mínimo (opcional, alerta)</label><input type="number" step="0.001" id="ing-estoque-min" value="${ing.estoque_minimo ?? ''}"></div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
+      const min = document.getElementById('ing-estoque-min').value;
+      const payload = {
+        nome: document.getElementById('ing-nome').value,
+        perda_percentual: parseFloat(document.getElementById('ing-perda').value || 0),
+        estoque_minimo: min === '' ? null : parseFloat(min),
+      };
+      if (!id) payload.unidade_compra = document.getElementById('ing-unidade').value;
+      try {
+        if (id) await api(`/ingredients/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        else await api('/ingredients', { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast(id ? 'Insumo atualizado.' : 'Insumo criado.'); goToSection('insumos');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
 }
 
-function enterApp() {
-  document.getElementById("auth-area").style.display = "none";
-  document.getElementById("app-area").style.display = "block";
-  refreshAll();
+async function archiveIngredient(id) {
+  if (!confirm('Arquivar este insumo? Ele deixa de aparecer nas listas, mas o histórico é preservado.')) return;
+  try { await api(`/ingredients/${id}/archive`, { method: 'POST' }); toast('Insumo arquivado.'); goToSection('insumos'); }
+  catch (err) { toast(err.message, 'error'); }
 }
 
-if (token) { enterApp(); }
+async function openIngredientPriceModal(id, nome, unidade) {
+  const historico = await api(`/ingredients/${id}/prices`);
+  const linhas = historico.map((h, idx) => `
+    <div class="receipt-line">
+      <span class="label">${fmtDate(h.vigente_desde)} · ${money(h.preco_pago_centavos)} / ${h.quantidade_comprada}${unidade}</span>
+      <span class="value">${money(h.custo_por_base_milicentavos / 100)}/base${idx===0 ? ' <span class=\"pill pill-ok\">atual</span>' : ''}</span>
+    </div>`).join('') || '<p class="hint">Nenhum preço registrado ainda.</p>';
+
+  openModal(`Preço — ${esc(nome)}`, `
+    <div class="field-row">
+      <div class="field"><label>Preço pago (R$)</label><input type="number" step="0.01" id="price-valor" placeholder="Ex: 120.00"></div>
+      <div class="field"><label>Quantidade comprada (${unidade})</label><input type="number" step="0.001" id="price-qtd" placeholder="Ex: 5"></div>
+    </div>
+    <button class="btn btn-primary" onclick="registrarPrecoInsumo('${id}', '${esc(nome)}', '${unidade}')">Registrar novo preço</button>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;">Histórico (mais recente primeiro)</h4>
+    <div id="price-history">${linhas}</div>
+  `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: closeModal }]);
+}
+
+async function registrarPrecoInsumo(id, nome, unidade) {
+  const valor = parseFloat(document.getElementById('price-valor').value);
+  const qtd = parseFloat(document.getElementById('price-qtd').value);
+  if (!valor || !qtd) { toast('Preencha preço e quantidade.', 'error'); return; }
+  try {
+    await api(`/ingredients/${id}/prices`, { method: 'POST', body: JSON.stringify({ preco_pago_centavos: Math.round(valor*100), quantidade_comprada: qtd }) });
+    toast('Preço registrado.');
+    closeModal();
+    openIngredientPriceModal(id, nome, unidade);
+    goToSection('insumos');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function openIngredientMovementsModal(id, nome) {
+  const movs = await api(`/ingredients/${id}/movements`);
+  const linhas = movs.slice(0, 30).map(m => `
+    <div class="receipt-line">
+      <span class="label">${fmtDate(m.data)} · ${esc(m.tipo)}${m.nota ? ' — '+esc(m.nota) : ''}</span>
+      <span class="value" style="color:${m.qtd < 0 ? 'var(--brick)' : 'var(--forest)'}">${m.qtd > 0 ? '+' : ''}${m.qtd}</span>
+    </div>`).join('') || '<p class="hint">Nenhum movimento ainda.</p>';
+
+  openModal(`Estoque — ${esc(nome)}`, `
+    <div class="grid-2">
+      <div>
+        <label>Registrar perda</label>
+        <input type="number" step="0.001" id="mov-perda-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
+        <input type="text" id="mov-perda-nota" placeholder="Motivo (obrigatório)" style="margin-bottom:6px;">
+        <button class="btn btn-sm btn-danger btn-block" onclick="registrarMovimento('${id}', 'loss', '${esc(nome)}')">Registrar perda</button>
+      </div>
+      <div>
+        <label>Consumo interno</label>
+        <input type="number" step="0.001" id="mov-consumo-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
+        <input type="text" id="mov-consumo-nota" placeholder="Motivo (obrigatório)" style="margin-bottom:6px;">
+        <button class="btn btn-sm btn-secondary btn-block" onclick="registrarMovimento('${id}', 'internal-consumption', '${esc(nome)}')">Registrar consumo</button>
+      </div>
+    </div>
+    <hr class="divider">
+    <label>Ajuste (contagem física — define o saldo exato)</label>
+    <div class="field-row">
+      <input type="number" step="0.001" id="mov-ajuste-saldo" placeholder="Novo saldo total">
+      <input type="text" id="mov-ajuste-nota" placeholder="Justificativa (obrigatória)">
+    </div>
+    <button class="btn btn-sm btn-primary" onclick="registrarAjuste('${id}', '${esc(nome)}')">Registrar ajuste</button>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;">Últimos movimentos</h4>
+    <div id="mov-history">${linhas}</div>
+  `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: closeModal }]);
+}
+
+async function registrarMovimento(id, endpoint, nome) {
+  const qtd = parseFloat(document.getElementById(endpoint === 'loss' ? 'mov-perda-qtd' : 'mov-consumo-qtd').value);
+  const nota = document.getElementById(endpoint === 'loss' ? 'mov-perda-nota' : 'mov-consumo-nota').value;
+  if (!qtd || !nota) { toast('Preencha quantidade e motivo.', 'error'); return; }
+  try {
+    await api(`/ingredients/${id}/${endpoint}`, { method: 'POST', body: JSON.stringify({ quantidade: qtd, nota }) });
+    toast('Movimento registrado.');
+    closeModal(); openIngredientMovementsModal(id, nome); goToSection('insumos');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function registrarAjuste(id, nome) {
+  const saldo = parseFloat(document.getElementById('mov-ajuste-saldo').value);
+  const nota = document.getElementById('mov-ajuste-nota').value;
+  if (isNaN(saldo) || !nota) { toast('Preencha o novo saldo e a justificativa.', 'error'); return; }
+  try {
+    await api(`/ingredients/${id}/adjustment`, { method: 'POST', body: JSON.stringify({ novo_saldo: saldo, nota }) });
+    toast('Ajuste registrado.');
+    closeModal(); openIngredientMovementsModal(id, nome); goToSection('insumos');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// FORNECEDORES
+// ============================================================
+SECTION_RENDERERS['fornecedores'] = async function () {
+  const el = document.getElementById('section-fornecedores');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openSupplierModal()">+ Novo fornecedor</button>`;
+  const list = await api('/suppliers?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhum fornecedor cadastrado</div>Cadastre de quem você compra pra poder registrar compras.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th>Contato</th><th></th></tr></thead>
+    <tbody>${list.map(s => `
+      <tr><td>${esc(s.nome)}</td><td>${esc(s.contato || '—')}</td>
+      <td class="table-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openSupplierModal('${s.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="archiveSupplier('${s.id}')">Arquivar</button>
+      </td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+async function openSupplierModal(id) {
+  let s = { nome: '', contato: '' };
+  if (id) s = await api(`/suppliers/${id}`);
+  openModal(id ? 'Editar fornecedor' : 'Novo fornecedor', `
+    <div class="field"><label>Nome</label><input type="text" id="sup-nome" value="${esc(s.nome)}"></div>
+    <div class="field"><label>Contato (opcional)</label><input type="text" id="sup-contato" value="${esc(s.contato || '')}" placeholder="Telefone ou e-mail"></div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
+      const payload = { nome: document.getElementById('sup-nome').value, contato: document.getElementById('sup-contato').value || null };
+      try {
+        if (id) await api(`/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        else await api('/suppliers', { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast(id ? 'Fornecedor atualizado.' : 'Fornecedor criado.'); goToSection('fornecedores');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+async function archiveSupplier(id) {
+  if (!confirm('Arquivar este fornecedor?')) return;
+  try { await api(`/suppliers/${id}/archive`, { method: 'POST' }); toast('Fornecedor arquivado.'); goToSection('fornecedores'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// COMPRAS
+// ============================================================
+let compraItensTemp = [];
+
+SECTION_RENDERERS['compras'] = async function () {
+  const el = document.getElementById('section-compras');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openPurchaseModal()">+ Nova compra</button>`;
+  const list = await api('/purchases');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhuma compra registrada</div>Registrar uma compra soma automaticamente no estoque dos insumos.</div>`;
+    return;
+  }
+  const suppliers = await api('/suppliers?incluir_arquivados=true');
+  const supplierName = (id) => suppliers.find(s => s.id === id)?.nome || '—';
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Data</th><th>Fornecedor</th><th class="num">Itens</th><th class="num">Frete</th><th class="num">Total</th></tr></thead>
+    <tbody>${list.map(p => {
+      const totalItens = p.itens.reduce((s,i) => s + i.preco_total_centavos, 0);
+      return `<tr><td>${fmtDate(p.data)}</td><td>${esc(supplierName(p.supplier_id))}</td><td class="num">${p.itens.length}</td><td class="num">${money(p.frete_centavos)}</td><td class="num">${money(totalItens + p.frete_centavos + p.outros_custos_centavos)}</td></tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+};
+
+async function openPurchaseModal() {
+  const suppliers = await api('/suppliers?incluir_arquivados=false');
+  const ingredients = await api('/ingredients?incluir_arquivados=false');
+  if (suppliers.length === 0 || ingredients.length === 0) {
+    toast('Cadastre ao menos 1 fornecedor e 1 insumo antes de registrar uma compra.', 'error');
+    return;
+  }
+  compraItensTemp = [];
+  renderPurchaseModalBody(suppliers, ingredients);
+}
+
+function renderPurchaseModalBody(suppliers, ingredients) {
+  const itensHtml = compraItensTemp.map((it, idx) => {
+    const ing = ingredients.find(i => i.id === it.ingredient_id);
+    return `<div class="receipt-line"><span class="label">${esc(ing.nome)} — ${it.quantidade_comprada}${ing.unidade_compra}</span><span class="value">${money(it.preco_total_centavos)} <button class="btn-link" onclick="removePurchaseItem(${idx})" style="margin-left:8px;color:var(--brick);">remover</button></span></div>`;
+  }).join('') || '<p class="hint">Nenhum item adicionado ainda.</p>';
+
+  openModal('Nova compra', `
+    <div class="field"><label>Fornecedor</label>
+      <select id="purch-supplier">${suppliers.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('')}</select>
+    </div>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);">Adicionar item</h4>
+    <div class="field-row">
+      <div class="field"><label>Insumo</label>
+        <select id="purch-item-ingredient">${ingredients.map(i => `<option value="${i.id}">${esc(i.nome)} (${i.unidade_compra})</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="purch-item-qtd"></div>
+      <div class="field"><label>Preço total (R$)</label><input type="number" step="0.01" id="purch-item-preco"></div>
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="addPurchaseItem()">Adicionar à compra</button>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);">Itens desta compra</h4>
+    <div id="purch-itens-list">${itensHtml}</div>
+    <hr class="divider">
+    <div class="field-row">
+      <div class="field"><label>Frete total (R$, opcional)</label><input type="number" step="0.01" id="purch-frete" value="0"></div>
+      <div class="field"><label>Outros custos (R$, opcional)</label><input type="number" step="0.01" id="purch-outros" value="0"></div>
+    </div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Registrar compra', cls: 'btn-primary', onClick: async () => {
+      if (compraItensTemp.length === 0) { toast('Adicione ao menos 1 item.', 'error'); return; }
+      try {
+        await api('/purchases', { method: 'POST', body: JSON.stringify({
+          supplier_id: document.getElementById('purch-supplier').value,
+          itens: compraItensTemp,
+          frete_centavos: Math.round(parseFloat(document.getElementById('purch-frete').value || 0) * 100),
+          outros_custos_centavos: Math.round(parseFloat(document.getElementById('purch-outros').value || 0) * 100),
+        })});
+        closeModal(); toast('Compra registrada — estoque e preço atualizados.'); goToSection('compras');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+  window._purchaseModalData = { suppliers, ingredients };
+}
+
+function addPurchaseItem() {
+  const ingredient_id = document.getElementById('purch-item-ingredient').value;
+  const quantidade_comprada = parseFloat(document.getElementById('purch-item-qtd').value);
+  const preco_total_centavos = Math.round(parseFloat(document.getElementById('purch-item-preco').value || 0) * 100);
+  if (!quantidade_comprada || !preco_total_centavos) { toast('Preencha quantidade e preço do item.', 'error'); return; }
+  compraItensTemp.push({ ingredient_id, quantidade_comprada, preco_total_centavos });
+  const { suppliers, ingredients } = window._purchaseModalData;
+  renderPurchaseModalBody(suppliers, ingredients);
+}
+function removePurchaseItem(idx) {
+  compraItensTemp.splice(idx, 1);
+  const { suppliers, ingredients } = window._purchaseModalData;
+  renderPurchaseModalBody(suppliers, ingredients);
+}
+
+// ============================================================
+// FICHAS TÉCNICAS
+// ============================================================
+SECTION_RENDERERS['fichas-tecnicas'] = async function () {
+  const el = document.getElementById('section-fichas-tecnicas');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openRecipeCreateModal()">+ Nova ficha técnica</button>`;
+  const list = await api('/recipes?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhuma ficha técnica ainda</div>Uma ficha técnica é a receita de um produto — quais insumos entram e em qual quantidade.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th class="num">Tempo de preparo</th><th class="num">Custo ingredientes</th><th class="num">Mão de obra</th><th class="num">Custo total</th><th></th></tr></thead>
+    <tbody>${list.map(r => `
+      <tr><td>${esc(r.nome)}</td><td class="num">${r.tempo_preparo_minutos !== null ? r.tempo_preparo_minutos+' min' : '—'}</td>
+      <td class="num">${money(r.custo_ingredientes_centavos)}</td><td class="num">${money(r.custo_mao_de_obra_centavos)}</td>
+      <td class="num" style="font-weight:600;">${money(r.custo_total_centavos)}</td>
+      <td class="table-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openRecipeDetailModal('${r.id}')">Ver/Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="archiveRecipe('${r.id}')">Arquivar</button>
+      </td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+async function openRecipeCreateModal() {
+  openModal('Nova ficha técnica', `
+    <div class="field"><label>Nome</label><input type="text" id="rec-nome" placeholder="Ex: Receita X-Burger"></div>
+    <div class="field"><label>Tempo de preparo em minutos (opcional)</label><input type="number" step="0.1" id="rec-tempo"></div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Criar', cls: 'btn-primary', onClick: async () => {
+      const tempo = document.getElementById('rec-tempo').value;
+      try {
+        const r = await api('/recipes', { method: 'POST', body: JSON.stringify({ nome: document.getElementById('rec-nome').value, tempo_preparo_minutos: tempo === '' ? null : parseFloat(tempo) })});
+        closeModal(); toast('Ficha técnica criada. Agora adicione os insumos.');
+        openRecipeDetailModal(r.id);
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+
+async function openRecipeDetailModal(id) {
+  const r = await api(`/recipes/${id}`);
+  const ingredients = await api('/ingredients?incluir_arquivados=false');
+  const itensHtml = r.itens.map(it => `
+    <div class="receipt-line"><span class="label">${esc(it.ingredient_nome)} — ${it.quantidade}${it.unidade_base}</span>
+    <span class="value">${money(it.custo_item_centavos)} <button class="btn-link" style="margin-left:8px;color:var(--brick);" onclick="removeRecipeItem('${id}','${it.id}')">remover</button></span></div>
+  `).join('') || '<p class="hint">Nenhum insumo adicionado ainda.</p>';
+
+  openModal(`Ficha técnica — ${esc(r.nome)}`, `
+    <div class="receipt-line total"><span class="label">Custo total (ingredientes + mão de obra)</span><span class="value">${money(r.custo_total_centavos)}</span></div>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);">Insumos desta receita</h4>
+    <div id="recipe-itens-list">${itensHtml}</div>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);">Adicionar insumo (só aceita insumo com preço já cadastrado)</h4>
+    <div class="field-row">
+      <div class="field"><label>Insumo</label>
+        <select id="rec-item-ingredient">${ingredients.map(i => `<option value="${i.id}">${esc(i.nome)}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Quantidade (unidade-base)</label><input type="number" step="0.001" id="rec-item-qtd" placeholder="g, ml ou un"></div>
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="addRecipeItem('${id}')">Adicionar à receita</button>
+  `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('fichas-tecnicas'); } }]);
+}
+
+async function addRecipeItem(recipeId) {
+  const ingredient_id = document.getElementById('rec-item-ingredient').value;
+  const quantidade = parseFloat(document.getElementById('rec-item-qtd').value);
+  if (!quantidade) { toast('Informe a quantidade.', 'error'); return; }
+  try {
+    await api(`/recipes/${recipeId}/items`, { method: 'POST', body: JSON.stringify({ ingredient_id, quantidade })});
+    toast('Insumo adicionado.');
+    openRecipeDetailModal(recipeId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function removeRecipeItem(recipeId, itemId) {
+  try {
+    await api(`/recipes/${recipeId}/items/${itemId}`, { method: 'DELETE' });
+    toast('Insumo removido.');
+    openRecipeDetailModal(recipeId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function archiveRecipe(id) {
+  if (!confirm('Arquivar esta ficha técnica? Produtos que a usam serão marcados para revisão.')) return;
+  try { await api(`/recipes/${id}/archive`, { method: 'POST' }); toast('Ficha técnica arquivada.'); goToSection('fichas-tecnicas'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// PRODUTOS (simples / combo / pizza_fracionada)
+// ============================================================
+SECTION_RENDERERS['produtos'] = async function () {
+  const el = document.getElementById('section-produtos');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openProductCreateModal()">+ Novo produto</button>`;
+  const list = await api('/products?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhum produto ainda</div>Um produto usa uma ficha técnica (ou é um combo/pizza) e soma a embalagem — é o que você realmente vende.</div>`;
+    return;
+  }
+  const estadoPill = (estado) => estado === 'ativo' ? '<span class="pill pill-ok">ativo</span>' : estado === 'precisa_revisao' ? '<span class="pill pill-warn">precisa revisão</span>' : '<span class="pill pill-neutral">arquivado</span>';
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th>Tipo</th><th class="num">Custo total do item</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${list.map(p => `
+      <tr><td>${esc(p.nome)}</td><td>${esc(p.tipo)}</td>
+      <td class="num" style="font-weight:600;">${money(p.custo_total_do_item_centavos)}</td>
+      <td>${estadoPill(p.estado)}</td>
+      <td class="table-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openProductDetailModal('${p.id}')">Ver/Gerenciar</button>
+        <button class="btn btn-sm btn-danger" onclick="archiveProduct('${p.id}')">Arquivar</button>
+      </td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+async function openProductCreateModal() {
+  const recipes = await api('/recipes?incluir_arquivados=false');
+  openModal('Novo produto', `
+    <div class="field"><label>Nome</label><input type="text" id="prod-nome" placeholder="Ex: X-Burger Clássico"></div>
+    <div class="field"><label>Tipo</label>
+      <select id="prod-tipo" onchange="toggleProductTypeFields()">
+        <option value="simples">Simples (usa 1 ficha técnica)</option>
+        <option value="combo">Combo (feito de outros produtos)</option>
+        <option value="pizza_fracionada">Pizza fracionada (base + sabores)</option>
+      </select>
+    </div>
+    <div class="field" id="prod-recipe-field">
+      <label id="prod-recipe-label">Ficha técnica</label>
+      <select id="prod-recipe">${recipes.map(r => `<option value="${r.id}">${esc(r.nome)}</option>`).join('')}</select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Unidade de venda</label>
+        <select id="prod-unidade-venda">${['un','kg','g','L','ml'].map(u => `<option value="${u}">${u}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Embalagem (R$, opcional)</label><input type="number" step="0.01" id="prod-embalagem" value="0"></div>
+    </div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Criar', cls: 'btn-primary', onClick: async () => {
+      const tipo = document.getElementById('prod-tipo').value;
+      const payload = {
+        nome: document.getElementById('prod-nome').value,
+        tipo,
+        unidade_venda: document.getElementById('prod-unidade-venda').value,
+        embalagem_centavos: Math.round(parseFloat(document.getElementById('prod-embalagem').value || 0) * 100),
+        recipe_id: tipo === 'combo' ? null : document.getElementById('prod-recipe').value,
+      };
+      try {
+        const p = await api('/products', { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast('Produto criado.');
+        openProductDetailModal(p.id);
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+function toggleProductTypeFields() {
+  const tipo = document.getElementById('prod-tipo').value;
+  document.getElementById('prod-recipe-field').style.display = tipo === 'combo' ? 'none' : 'block';
+  document.getElementById('prod-recipe-label').textContent = tipo === 'pizza_fracionada' ? 'Ficha técnica da base (massa, molho)' : 'Ficha técnica';
+}
+
+async function openProductDetailModal(id) {
+  const p = await api(`/products/${id}`);
+  let extraHtml = '';
+
+  if (p.tipo === 'combo') {
+    const products = await api('/products?incluir_arquivados=false');
+    const others = products.filter(x => x.id !== id);
+    const itensHtml = p.itens_combo.map(it => `
+      <div class="receipt-line"><span class="label">${esc(it.component_nome)} × ${it.quantidade}</span>
+      <span class="value">${money(it.custo_item_centavos)} <button class="btn-link" style="margin-left:8px;color:var(--brick);" onclick="removeComboItem('${id}','${it.id}')">remover</button></span></div>
+    `).join('') || '<p class="hint">Nenhum componente ainda.</p>';
+    extraHtml = `
+      <hr class="divider"><h4 style="font-size:13px;color:var(--ink-soft);">Componentes do combo</h4>
+      <div>${itensHtml}</div>
+      <div class="field-row" style="margin-top:10px;">
+        <div class="field"><label>Adicionar produto</label><select id="combo-item-product">${others.map(o => `<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>
+        <div class="field"><label>Quantidade</label><input type="number" step="1" id="combo-item-qtd" value="1"></div>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="addComboItem('${id}')">Adicionar ao combo</button>`;
+  } else if (p.tipo === 'pizza_fracionada') {
+    const products = await api('/products?incluir_arquivados=false');
+    const sabores = products.filter(x => x.tipo === 'simples');
+    const itensHtml = p.itens_pizza.map(it => `
+      <div class="receipt-line"><span class="label">${esc(it.sabor_nome)} — ${(it.fracao*100).toFixed(0)}%</span>
+      <span class="value">${money(it.custo_contribuido_centavos)} <button class="btn-link" style="margin-left:8px;color:var(--brick);" onclick="removePizzaSabor('${id}','${it.id}')">remover</button></span></div>
+    `).join('') || '<p class="hint">Nenhum sabor ainda.</p>';
+    extraHtml = `
+      <hr class="divider"><h4 style="font-size:13px;color:var(--ink-soft);">Sabores (base: ${money(p.custo_base_pizza_centavos)})</h4>
+      <div>${itensHtml}</div>
+      <div class="field-row" style="margin-top:10px;">
+        <div class="field"><label>Sabor (produto simples)</label><select id="pizza-sabor-product">${sabores.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('')}</select></div>
+        <div class="field"><label>Fração (ex: 0.5 = metade)</label><input type="number" step="0.01" min="0.01" max="1" id="pizza-sabor-fracao" value="0.5"></div>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="addPizzaSabor('${id}')">Adicionar sabor</button>`;
+  } else {
+    const itensHtml = p.itens.map(it => `<div class="receipt-line"><span class="label">${esc(it.ingredient_nome)} — ${it.quantidade}${it.unidade_base}</span><span class="value">${money(it.custo_item_centavos)}</span></div>`).join('');
+    extraHtml = `<hr class="divider"><h4 style="font-size:13px;color:var(--ink-soft);">Ingredientes (via ficha técnica)</h4><div>${itensHtml}</div>`;
+  }
+
+  openModal(`${esc(p.nome)} (${p.tipo})`, `
+    <div class="receipt-line"><span class="label">Embalagem</span><span class="value">${money(p.embalagem_centavos)}</span></div>
+    <div class="receipt-line total"><span class="label">Custo total do item</span><span class="value">${money(p.custo_total_do_item_centavos)}</span></div>
+    ${extraHtml}
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);">Precificação por canal</h4>
+    <div id="product-pricing-list">Carregando…</div>
+    <div class="field-row">
+      <div class="field"><label>Canal</label><select id="pricing-channel"></select></div>
+      <div class="field"><label>Margem desejada (%)</label><input type="number" step="0.01" id="pricing-margem" value="30"></div>
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="createProductPricing('${id}')">Precificar neste canal</button>
+  `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('produtos'); } }]);
+
+  loadProductPricing(id);
+}
+
+async function loadProductPricing(productId) {
+  const pricings = await api(`/products/${productId}/pricing`);
+  const channels = await api('/channels?incluir_arquivados=false');
+  const chName = (id) => channels.find(c => c.id === id)?.nome || '—';
+  const listEl = document.getElementById('product-pricing-list');
+  if (listEl) {
+    listEl.innerHTML = pricings.map(pr => `
+      <div class="receipt-line">
+        <span class="label">${esc(chName(pr.channel_id))} — meta ${pct(pr.margem_desejada_percentual)}${pr.abaixo_do_preco_minimo ? ' <span class="pill pill-bad">abaixo do mínimo</span>' : ''}</span>
+        <span class="value">${money(pr.preco_em_vigor_centavos)} <span style="color:var(--ink-faint);font-weight:400;">(mín ${money(pr.preco_minimo_centavos)})</span></span>
+      </div>`).join('') || '<p class="hint">Ainda não precificado em nenhum canal.</p>';
+  }
+  const sel = document.getElementById('pricing-channel');
+  if (sel) {
+    const jaPrecificados = new Set(pricings.map(p => p.channel_id));
+    const disponiveis = channels.filter(c => !jaPrecificados.has(c.id));
+    sel.innerHTML = disponiveis.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('') || '<option value="">(todos os canais já precificados)</option>';
+  }
+}
+async function createProductPricing(productId) {
+  const channel_id = document.getElementById('pricing-channel').value;
+  const margem = parseFloat(document.getElementById('pricing-margem').value);
+  if (!channel_id) { toast('Selecione um canal.', 'error'); return; }
+  try {
+    await api(`/products/${productId}/pricing`, { method: 'POST', body: JSON.stringify({ channel_id, margem_desejada_percentual: margem }) });
+    toast('Precificado.');
+    loadProductPricing(productId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function addComboItem(comboId) {
+  const component_product_id = document.getElementById('combo-item-product').value;
+  const quantidade = parseFloat(document.getElementById('combo-item-qtd').value || 1);
+  try {
+    await api(`/products/${comboId}/combo-items`, { method: 'POST', body: JSON.stringify({ component_product_id, quantidade }) });
+    toast('Componente adicionado.'); openProductDetailModal(comboId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function removeComboItem(comboId, itemId) {
+  try { await api(`/products/${comboId}/combo-items/${itemId}`, { method: 'DELETE' }); toast('Componente removido.'); openProductDetailModal(comboId); }
+  catch (err) { toast(err.message, 'error'); }
+}
+async function addPizzaSabor(pizzaId) {
+  const sabor_product_id = document.getElementById('pizza-sabor-product').value;
+  const fracao = parseFloat(document.getElementById('pizza-sabor-fracao').value);
+  try {
+    await api(`/products/${pizzaId}/pizza-sabores`, { method: 'POST', body: JSON.stringify({ sabor_product_id, fracao }) });
+    toast('Sabor adicionado.'); openProductDetailModal(pizzaId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function removePizzaSabor(pizzaId, saborId) {
+  try { await api(`/products/${pizzaId}/pizza-sabores/${saborId}`, { method: 'DELETE' }); toast('Sabor removido.'); openProductDetailModal(pizzaId); }
+  catch (err) { toast(err.message, 'error'); }
+}
+async function archiveProduct(id) {
+  if (!confirm('Arquivar este produto?')) return;
+  try { await api(`/products/${id}/archive`, { method: 'POST' }); toast('Produto arquivado.'); goToSection('produtos'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// CANAIS DE VENDA
+// ============================================================
+SECTION_RENDERERS['canais'] = async function () {
+  const el = document.getElementById('section-canais');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openChannelModal()">+ Novo canal</button>`;
+  const list = await api('/channels?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhum canal cadastrado</div>Ex: Presencial, Delivery Próprio, iFood — cada um com sua taxa.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th class="num">Taxa %</th><th class="num">Taxa fixa</th><th class="num">Imposto próprio</th><th></th></tr></thead>
+    <tbody>${list.map(c => `
+      <tr><td>${esc(c.nome)}</td><td class="num">${pct(c.taxa_percentual)}</td><td class="num">${money(c.taxa_fixa_centavos)}</td>
+      <td class="num">${c.imposto_override_percentual !== null ? pct(c.imposto_override_percentual) : '—'}</td>
+      <td class="table-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openChannelModal('${c.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="archiveChannel('${c.id}')">Arquivar</button>
+      </td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+async function openChannelModal(id) {
+  let c = { nome: '', taxa_percentual: 0, taxa_fixa_centavos: 0, imposto_override_percentual: null };
+  if (id) c = await api(`/channels/${id}`);
+  openModal(id ? 'Editar canal' : 'Novo canal', `
+    <div class="field"><label>Nome</label><input type="text" id="ch-nome" value="${esc(c.nome)}" placeholder="Ex: iFood"></div>
+    <div class="field-row">
+      <div class="field"><label>Taxa percentual (%)</label><input type="number" step="0.01" id="ch-taxa-pct" value="${c.taxa_percentual}"></div>
+      <div class="field"><label>Taxa fixa por pedido (R$)</label><input type="number" step="0.01" id="ch-taxa-fixa" value="${(c.taxa_fixa_centavos/100).toFixed(2)}"></div>
+    </div>
+    <div class="field"><label>Imposto próprio (%, opcional — senão usa o padrão do negócio)</label><input type="number" step="0.01" id="ch-imposto" value="${c.imposto_override_percentual ?? ''}"></div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
+      const imp = document.getElementById('ch-imposto').value;
+      const payload = {
+        nome: document.getElementById('ch-nome').value,
+        taxa_percentual: parseFloat(document.getElementById('ch-taxa-pct').value || 0),
+        taxa_fixa_centavos: Math.round(parseFloat(document.getElementById('ch-taxa-fixa').value || 0) * 100),
+        imposto_override_percentual: imp === '' ? null : parseFloat(imp),
+      };
+      try {
+        if (id) await api(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        else await api('/channels', { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast(id ? 'Canal atualizado.' : 'Canal criado.'); goToSection('canais');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+async function archiveChannel(id) {
+  if (!confirm('Arquivar este canal?')) return;
+  try { await api(`/channels/${id}/archive`, { method: 'POST' }); toast('Canal arquivado.'); goToSection('canais'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// VENDAS
+// ============================================================
+SECTION_RENDERERS['vendas'] = async function () {
+  const el = document.getElementById('section-vendas');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openSaleModal()">+ Registrar venda</button>`;
+  const list = await api('/sales');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhuma venda registrada ainda</div>Registrar uma venda desconta o estoque e calcula a margem na hora.</div>`;
+    return;
+  }
+  const products = await api('/products?incluir_arquivados=true');
+  const channels = await api('/channels?incluir_arquivados=true');
+  const pName = (id) => products.find(p => p.id === id)?.nome || '—';
+  const cName = (id) => channels.find(c => c.id === id)?.nome || '—';
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Data</th><th>Produto</th><th>Canal</th><th class="num">Qtd</th><th class="num">Preço unit.</th><th class="num">MC total</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.map(s => `
+      <tr><td>${fmtDate(s.data_hora_registro)}</td><td>${esc(pName(s.item.product_id))}</td><td>${esc(cName(s.channel_id))}</td>
+      <td class="num">${s.item.quantidade}</td><td class="num">${money(s.item.preco_unitario_praticado_centavos)}</td>
+      <td class="num" style="color:${s.item.margem_contribuicao_total_centavos >= 0 ? 'var(--forest)' : 'var(--brick)'};font-weight:600;">${money(s.item.margem_contribuicao_total_centavos)}</td>
+      <td>${s.status === 'confirmada' ? '<span class="pill pill-ok">confirmada</span>' : '<span class="pill pill-neutral">cancelada</span>'}</td>
+      <td class="table-actions">
+        <button class="btn btn-sm btn-secondary" onclick="viewSaleDetail('${s.id}')">Detalhe</button>
+        ${s.status === 'confirmada' ? `<button class="btn btn-sm btn-danger" onclick="cancelSale('${s.id}')">Cancelar</button>` : ''}
+      </td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+async function openSaleModal() {
+  const products = await api('/products?incluir_arquivados=false');
+  const channels = await api('/channels?incluir_arquivados=false');
+  const ativos = products.filter(p => p.estado === 'ativo');
+  if (ativos.length === 0 || channels.length === 0) { toast('Cadastre ao menos 1 produto ativo e 1 canal antes de vender.', 'error'); return; }
+  openModal('Registrar venda', `
+    <div class="field"><label>Produto</label><select id="sale-product">${ativos.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
+    <div class="field"><label>Canal</label><select id="sale-channel">${channels.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
+    <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="sale-qtd" value="1"></div>
+    <div class="checkbox-row"><input type="checkbox" id="sale-redondo"> <label style="margin:0;">Usar preço redondo (arredondado pra ,90)</label></div>
+    <p class="hint">O preço vem da precificação já configurada para este produto neste canal — se não houver, a venda é rejeitada.</p>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Registrar', cls: 'btn-primary', onClick: async () => {
+      try {
+        const s = await api('/sales', { method: 'POST', body: JSON.stringify({
+          product_id: document.getElementById('sale-product').value,
+          channel_id: document.getElementById('sale-channel').value,
+          quantidade: parseFloat(document.getElementById('sale-qtd').value),
+          usar_preco_redondo: document.getElementById('sale-redondo').checked,
+          idempotency_key: uuid(),
+        })});
+        closeModal();
+        toast(`Venda registrada — MC: ${money(s.item.margem_contribuicao_total_centavos)}`);
+        goToSection('vendas');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+
+async function viewSaleDetail(id) {
+  const s = await api(`/sales/${id}`);
+  const i = s.item;
+  const devolucoes = await api(`/sales/${id}/returns`);
+  openModal('Detalhe da venda', `
+    <div class="receipt-line"><span class="label">Status</span><span class="value">${s.status}</span></div>
+    <div class="receipt-line"><span class="label">Quantidade</span><span class="value">${i.quantidade}</span></div>
+    <div class="receipt-line"><span class="label">Preço de tabela</span><span class="value">${money(i.preco_tabela_centavos)}</span></div>
+    <div class="receipt-line"><span class="label">Desconto bancado pela loja</span><span class="value">${money(i.desconto_bancado_estabelecimento_centavos)}</span></div>
+    <div class="receipt-line"><span class="label">Desconto subsidiado pelo canal</span><span class="value">${money(i.desconto_subsidiado_canal_centavos)}</span></div>
+    <div class="receipt-line"><span class="label">Preço praticado (cliente pagou)</span><span class="value">${money(i.preco_unitario_praticado_centavos)}</span></div>
+    <div class="receipt-line"><span class="label">Custo do item</span><span class="value">${money(i.custo_total_do_item_centavos)}</span></div>
+    <div class="receipt-line total"><span class="label">Margem de contribuição total</span><span class="value">${money(i.margem_contribuicao_total_centavos)}</span></div>
+    <hr class="divider">
+    <h4 style="font-size:13px;color:var(--ink-soft);">Devoluções parciais</h4>
+    ${devolucoes.length ? devolucoes.map(d => `<div class="receipt-line"><span class="label">${fmtDate(d.criado_em)} — ${esc(d.motivo)}</span><span class="value">${d.quantidade_devolvida}</span></div>`).join('') : '<p class="hint">Nenhuma devolução.</p>'}
+    ${s.status === 'confirmada' ? `
+    <div class="field-row" style="margin-top:10px;">
+      <input type="number" step="0.001" id="return-qtd" placeholder="Qtd a devolver">
+      <input type="text" id="return-motivo" placeholder="Motivo">
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="registrarDevolucao('${id}')">Registrar devolução parcial</button>` : ''}
+  `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('vendas'); } }]);
+}
+async function registrarDevolucao(saleId) {
+  const quantidade_devolvida = parseFloat(document.getElementById('return-qtd').value);
+  const motivo = document.getElementById('return-motivo').value;
+  if (!quantidade_devolvida || !motivo) { toast('Preencha quantidade e motivo.', 'error'); return; }
+  try {
+    await api(`/sales/${saleId}/returns`, { method: 'POST', body: JSON.stringify({ quantidade_devolvida, motivo }) });
+    toast('Devolução registrada.'); viewSaleDetail(saleId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function cancelSale(id) {
+  if (!confirm('Cancelar esta venda? O estoque volta automaticamente.')) return;
+  try { await api(`/sales/${id}/cancel`, { method: 'POST' }); toast('Venda cancelada.'); goToSection('vendas'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// ESTOQUE (visão consolidada — os movimentos ficam no modal de cada insumo)
+// ============================================================
+SECTION_RENDERERS['estoque'] = async function () {
+  const el = document.getElementById('section-estoque');
+  const list = await api('/ingredients?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhum insumo cadastrado</div>Cadastre insumos primeiro — o estoque de cada um aparece aqui.</div>`;
+    return;
+  }
+  const baixos = list.filter(i => i.estoque_minimo !== null && i.estoque_atual < i.estoque_minimo);
+  el.innerHTML = `
+    ${baixos.length ? `<div class="card" style="border-color:var(--brick-tint);background:var(--brick-tint);margin-bottom:16px;">
+      <strong style="color:var(--brick);">${baixos.length} insumo(s) abaixo do estoque mínimo:</strong> ${baixos.map(b => esc(b.nome)).join(', ')}
+    </div>` : ''}
+    <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Insumo</th><th class="num">Estoque atual</th><th class="num">Mínimo</th><th></th></tr></thead>
+    <tbody>${list.map(i => `
+      <tr><td>${esc(i.nome)}</td>
+      <td class="num" style="color:${i.estoque_minimo !== null && i.estoque_atual < i.estoque_minimo ? 'var(--brick)' : 'inherit'};font-weight:600;">${qtyLabel(i.estoque_atual, i.unidade_estoque)}</td>
+      <td class="num">${i.estoque_minimo !== null ? qtyLabel(i.estoque_minimo, i.unidade_estoque) : '—'}</td>
+      <td class="table-actions"><button class="btn btn-sm btn-secondary" onclick="goToSection('insumos').then(()=>openIngredientMovementsModal('${i.id}','${esc(i.nome)}'))">Ver movimentos</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+// ============================================================
+// PROMOÇÕES
+// ============================================================
+SECTION_RENDERERS['promocoes'] = async function () {
+  const el = document.getElementById('section-promocoes');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openPromotionModal()">+ Nova promoção</button>`;
+  const list = await api('/promotions');
+  const products = await api('/products?incluir_arquivados=true');
+  const channels = await api('/channels?incluir_arquivados=true');
+  const pName = (id) => products.find(p => p.id === id)?.nome || '—';
+  const cName = (id) => channels.find(c => c.id === id)?.nome || '—';
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhuma promoção cadastrada</div>Desconto aplicado automaticamente na venda, com a parte que o canal (ex: iFood) banca.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th>Produto</th><th>Canal</th><th class="num">Desconto</th><th class="num">Canal banca</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.map(pr => `
+      <tr><td>${esc(pr.nome)}</td><td>${esc(pName(pr.product_id))}</td><td>${esc(cName(pr.channel_id))}</td>
+      <td class="num">${pr.tipo_desconto === 'percentual' ? pct(pr.desconto_percentual) : money(pr.desconto_fixo_centavos)}</td>
+      <td class="num">${pct(pr.percentual_canal)}</td>
+      <td>${pr.ativo ? '<span class="pill pill-ok">ativa</span>' : '<span class="pill pill-neutral">inativa</span>'}</td>
+      <td class="table-actions">${pr.ativo ? `<button class="btn btn-sm btn-danger" onclick="deactivatePromotion('${pr.id}')">Desativar</button>` : ''}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+async function openPromotionModal() {
+  const products = await api('/products?incluir_arquivados=false');
+  const channels = await api('/channels?incluir_arquivados=false');
+  if (products.length === 0 || channels.length === 0) { toast('Cadastre ao menos 1 produto e 1 canal antes.', 'error'); return; }
+  openModal('Nova promoção', `
+    <div class="field"><label>Nome</label><input type="text" id="promo-nome" placeholder="Ex: 20% OFF Quinta"></div>
+    <div class="field-row">
+      <div class="field"><label>Produto</label><select id="promo-product">${products.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
+      <div class="field"><label>Canal</label><select id="promo-channel">${channels.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>Tipo de desconto</label>
+      <select id="promo-tipo" onchange="togglePromoTipoFields()">
+        <option value="percentual">Percentual</option>
+        <option value="valor_fixo">Valor fixo</option>
+      </select>
+    </div>
+    <div class="field" id="promo-pct-field"><label>Desconto (%)</label><input type="number" step="0.01" id="promo-desconto-pct" value="10"></div>
+    <div class="field" id="promo-fixo-field" style="display:none;"><label>Desconto (R$)</label><input type="number" step="0.01" id="promo-desconto-fixo"></div>
+    <div class="field-row">
+      <div class="field"><label>% que o canal banca do desconto</label><input type="number" step="0.01" id="promo-pct-canal" value="0"></div>
+      <div class="field"><label>Subsídio máximo (R$, opcional)</label><input type="number" step="0.01" id="promo-subsidio-max"></div>
+    </div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Criar', cls: 'btn-primary', onClick: async () => {
+      const tipo = document.getElementById('promo-tipo').value;
+      const subMax = document.getElementById('promo-subsidio-max').value;
+      const payload = {
+        product_id: document.getElementById('promo-product').value,
+        channel_id: document.getElementById('promo-channel').value,
+        nome: document.getElementById('promo-nome').value,
+        tipo_desconto: tipo,
+        desconto_percentual: tipo === 'percentual' ? parseFloat(document.getElementById('promo-desconto-pct').value) : null,
+        desconto_fixo_centavos: tipo === 'valor_fixo' ? Math.round(parseFloat(document.getElementById('promo-desconto-fixo').value) * 100) : null,
+        percentual_canal: parseFloat(document.getElementById('promo-pct-canal').value || 0),
+        subsidio_maximo_centavos: subMax === '' ? null : Math.round(parseFloat(subMax) * 100),
+      };
+      try {
+        await api('/promotions', { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast('Promoção criada.'); goToSection('promocoes');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+function togglePromoTipoFields() {
+  const tipo = document.getElementById('promo-tipo').value;
+  document.getElementById('promo-pct-field').style.display = tipo === 'percentual' ? 'block' : 'none';
+  document.getElementById('promo-fixo-field').style.display = tipo === 'valor_fixo' ? 'block' : 'none';
+}
+async function deactivatePromotion(id) {
+  if (!confirm('Desativar esta promoção?')) return;
+  try { await api(`/promotions/${id}/deactivate`, { method: 'POST' }); toast('Promoção desativada.'); goToSection('promocoes'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// CUSTOS FIXOS
+// ============================================================
+SECTION_RENDERERS['custos-fixos'] = async function () {
+  const el = document.getElementById('section-custos-fixos');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openFixedCostModal()">+ Novo custo fixo</button>`;
+  const list = await api('/fixed-costs?incluir_arquivados=false');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhum custo fixo cadastrado</div>Aluguel, salários fixos — entram no cálculo do Resultado Operacional.</div>`;
+    return;
+  }
+  const total = list.reduce((s, f) => s + f.valor_mensal_centavos, 0);
+  el.innerHTML = `
+    <div class="stat" style="margin-bottom:16px;max-width:280px;"><div class="label">Total mensal</div><div class="value">${money(total)}</div></div>
+    <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Nome</th><th class="num">Valor mensal</th><th></th></tr></thead>
+    <tbody>${list.map(f => `
+      <tr><td>${esc(f.nome)}</td><td class="num">${money(f.valor_mensal_centavos)}</td>
+      <td class="table-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openFixedCostModal('${f.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="archiveFixedCost('${f.id}')">Arquivar</button>
+      </td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+async function openFixedCostModal(id) {
+  let f = { nome: '', valor_mensal_centavos: 0 };
+  if (id) f = await api(`/fixed-costs/${id}`);
+  openModal(id ? 'Editar custo fixo' : 'Novo custo fixo', `
+    <div class="field"><label>Nome</label><input type="text" id="fc-nome" value="${esc(f.nome)}" placeholder="Ex: Aluguel"></div>
+    <div class="field"><label>Valor mensal (R$)</label><input type="number" step="0.01" id="fc-valor" value="${(f.valor_mensal_centavos/100).toFixed(2)}"></div>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
+      const payload = { nome: document.getElementById('fc-nome').value, valor_mensal_centavos: Math.round(parseFloat(document.getElementById('fc-valor').value) * 100) };
+      try {
+        if (id) await api(`/fixed-costs/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        else await api('/fixed-costs', { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast(id ? 'Atualizado.' : 'Criado.'); goToSection('custos-fixos');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+async function archiveFixedCost(id) {
+  if (!confirm('Arquivar este custo fixo?')) return;
+  try { await api(`/fixed-costs/${id}/archive`, { method: 'POST' }); toast('Arquivado.'); goToSection('custos-fixos'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ============================================================
+// DESPESAS
+// ============================================================
+SECTION_RENDERERS['despesas'] = async function () {
+  const el = document.getElementById('section-despesas');
+  document.getElementById('header-extra').innerHTML = `<button class="btn btn-primary" onclick="openExpenseModal()">+ Nova despesa</button>`;
+  const list = await api('/expenses');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">Nenhuma despesa registrada</div>Financeiras (juros) ou não-operacionais (conserto) — entram no Lucro Líquido.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>Data</th><th>Nome</th><th>Tipo</th><th class="num">Valor</th></tr></thead>
+    <tbody>${list.map(e => `<tr><td>${fmtDate(e.data)}</td><td>${esc(e.nome)}</td><td>${esc(e.tipo)}</td><td class="num">${money(e.valor_centavos)}</td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+async function openExpenseModal() {
+  openModal('Nova despesa', `
+    <div class="field"><label>Tipo</label>
+      <select id="exp-tipo"><option value="financeira">Financeira (juros, taxas)</option><option value="nao_operacional">Não-operacional</option></select>
+    </div>
+    <div class="field"><label>Nome</label><input type="text" id="exp-nome" placeholder="Ex: Juros do empréstimo"></div>
+    <div class="field"><label>Valor (R$)</label><input type="number" step="0.01" id="exp-valor"></div>
+    <p class="hint">Sempre vinculada ao período financeiro aberto agora.</p>
+  `, [
+    { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
+    { label: 'Registrar', cls: 'btn-primary', onClick: async () => {
+      try {
+        await api('/expenses', { method: 'POST', body: JSON.stringify({
+          tipo: document.getElementById('exp-tipo').value,
+          nome: document.getElementById('exp-nome').value,
+          valor_centavos: Math.round(parseFloat(document.getElementById('exp-valor').value) * 100),
+        })});
+        closeModal(); toast('Despesa registrada.'); goToSection('despesas');
+      } catch (err) { toast(err.message, 'error'); }
+    }},
+  ]);
+}
+
+// ============================================================
+// FECHAMENTO / RESULTADO DO PERÍODO
+// ============================================================
+SECTION_RENDERERS['fechamento'] = async function () {
+  const el = document.getElementById('section-fechamento');
+  const periodo = await api('/financial-period/current');
+  const r = await api(`/financial-period/${periodo.id}/resultado`);
+  const ranking = await api('/reports/produtos-mais-rentaveis');
+
+  el.innerHTML = `
+    <div class="grid-3" style="margin-bottom:20px;">
+      <div class="stat"><div class="label">Vendas no período</div><div class="value">${r.quantidade_vendas}</div></div>
+      <div class="stat"><div class="label">Faturamento bruto</div><div class="value">${money(r.faturamento_bruto_centavos)}</div></div>
+      <div class="stat"><div class="label">Lucro líquido</div><div class="value ${r.lucro_liquido_centavos >= 0 ? 'positive' : 'negative'}">${money(r.lucro_liquido_centavos)}</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Cascata financeira do período aberto</h3>
+        <div class="receipt-line"><span class="label">Faturamento bruto</span><span class="value">${money(r.faturamento_bruto_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Descontos bancados pela loja</span><span class="value">${money(r.descontos_bancados_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">= Faturamento líquido</span><span class="value">${money(r.faturamento_liquido_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) CIV (custo dos ingredientes vendidos)</span><span class="value">${money(r.civ_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">= Margem bruta</span><span class="value">${money(r.margem_bruta_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Embalagem</span><span class="value">${money(r.embalagem_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Mão de obra</span><span class="value">${money(r.mao_de_obra_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Taxa fixa de canal</span><span class="value">${money(r.taxa_fixa_canal_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Comissão + imposto sobre vendas</span><span class="value">${money(r.comissao_mais_imposto_venda_centavos)}</span></div>
+        <div class="receipt-line total"><span class="label">= Margem de contribuição</span><span class="value">${money(r.margem_contribuicao_centavos)}</span></div>
+      </div>
+      <div class="card">
+        <h3>Do operacional ao lucro líquido</h3>
+        <div class="receipt-line"><span class="label">Margem de contribuição</span><span class="value">${money(r.margem_contribuicao_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Custos fixos do período</span><span class="value">${money(r.custo_fixo_periodo_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">= Resultado operacional</span><span class="value">${money(r.resultado_operacional_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Despesas financeiras</span><span class="value">${money(r.despesas_financeiras_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Despesas não-operacionais</span><span class="value">${money(r.despesas_nao_operacionais_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">= Lucro antes do imposto</span><span class="value">${money(r.lucro_antes_imposto_centavos)}</span></div>
+        <div class="receipt-line"><span class="label">(–) Imposto sobre o lucro</span><span class="value">${money(r.imposto_lucro_centavos)}</span></div>
+        <div class="receipt-line total"><span class="label">= Lucro líquido</span><span class="value ${r.lucro_liquido_centavos >= 0 ? '' : ''}" style="color:${r.lucro_liquido_centavos >= 0 ? 'var(--forest)' : 'var(--brick)'};">${money(r.lucro_liquido_centavos)}</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Produtos mais rentáveis (histórico completo)</h3>
+      ${ranking.length ? `<div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Produto</th><th class="num">Qtd vendida</th><th class="num">Faturamento</th><th class="num">Margem de contribuição</th></tr></thead>
+        <tbody>${ranking.map(p => `<tr><td>${esc(p.product_nome)}</td><td class="num">${p.quantidade_vendida}</td><td class="num">${money(p.faturamento_centavos)}</td><td class="num" style="font-weight:600;color:${p.margem_contribuicao_total_centavos>=0?'var(--forest)':'var(--brick)'};">${money(p.margem_contribuicao_total_centavos)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<p class="hint">Nenhuma venda confirmada ainda.</p>'}
+    </div>
+  `;
+};
 </script>
-
 </body>
 </html>
