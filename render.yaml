@@ -1,0 +1,25 @@
+# Blueprint do Render — define o serviço web e o banco de dados juntos.
+# Ao criar um "Blueprint" no Render apontando pra este repositório, ele lê
+# este arquivo e cria TUDO sozinho: o serviço + o banco + a ligação entre eles.
+databases:
+  - name: hamburgueria-db
+    plan: free
+    databaseName: hamburgueria
+
+services:
+  - type: web
+    name: hamburgueria-sistema
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hamburgueria-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12.3"

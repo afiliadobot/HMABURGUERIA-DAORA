@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Fase 1 — Validação da Fundação</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #241A12; }
+  h1 { font-size: 1.3rem; } h2 { font-size: 1.05rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: .3rem; }
+  input, select, button { font-size: 1rem; padding: .5rem; margin: .25rem 0; width: 100%; box-sizing: border-box; }
+  button { background: #E56A2E; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button.secondary { background: #999; }
+  .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
+  #app-area { display: none; }
+  .card { background: #f7f5f3; border-radius: 8px; padding: 1rem; margin: .75rem 0; }
+  .status-aberto { color: #1a7a1a; font-weight: bold; }
+  .status-fechado { color: #888; font-weight: bold; }
+  pre { background: #222; color: #0f0; padding: .5rem; font-size: .8rem; overflow-x: auto; border-radius: 4px; }
+  .error { color: #c0392b; }
+</style>
+</head>
+<body>
+
+<h1>Fase 1 — Banco + Auth + FinancialPeriod (validação mínima)</h1>
+<p style="color:#888;font-size:.85rem;">Esta tela existe só para validar o fluxo — não é o produto final.</p>
+
+<div id="auth-area">
+  <h2>Cadastro (cria Business novo)</h2>
+  <input id="su-business" placeholder="Nome do negócio">
+  <select id="su-segment">
+    <option value="hamburgueria">Hamburgueria</option>
+    <option value="pizzaria">Pizzaria</option>
+    <option value="restaurante">Restaurante</option>
+    <option value="delivery">Delivery</option>
+    <option value="outro">Outro</option>
+  </select>
+  <input id="su-timezone" placeholder="Timezone IANA" value="America/Sao_Paulo">
+  <input id="su-email" placeholder="E-mail">
+  <input id="su-password" type="password" placeholder="Senha (mín. 8 caracteres)">
+  <button onclick="signup()">Criar negócio e conta</button>
+
+  <h2>Login</h2>
+  <input id="li-email" placeholder="E-mail">
+  <input id="li-password" type="password" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+
+  <p class="error" id="auth-error"></p>
+</div>
+
+<div id="app-area">
+  <div class="row">
+    <button class="secondary" onclick="logout()">Sair (logout)</button>
+  </div>
+
+  <h2>Negócio</h2>
+  <div class="card" id="business-card">carregando...</div>
+
+  <h2>Configuração Operacional</h2>
+  <div class="card" id="config-card">carregando...</div>
+
+  <h2>Período Financeiro</h2>
+  <div class="card" id="period-card">carregando...</div>
+  <button onclick="closePeriod()">Fechar período atual</button>
+
+  <h2>Insumos</h2>
+  <div class="card">
+    <div class="row">
+      <input id="ing-nome" placeholder="Nome do insumo (ex: Carne bovina)">
+      <select id="ing-unidade">
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="L">L</option>
+        <option value="ml">ml</option>
+        <option value="un">un</option>
+      </select>
+    </div>
+    <div class="row">
+      <input id="ing-perda" type="number" step="0.01" placeholder="Perda % (opcional, ex: 10)">
+      <input id="ing-estoque-min" type="number" step="0.001" placeholder="Estoque mínimo (opcional)">
+    </div>
+    <button onclick="criarInsumo()">Adicionar insumo</button>
+  </div>
+  <div id="lista-insumos"></div>
+
+  <h2>Resposta bruta da API (debug)</h2>
+  <pre id="debug">—</pre>
+</div>
+
+<div class="card" id="modal-preco" style="display:none; position:fixed; top:60px; left:0; right:0; margin:auto; max-width:600px; box-shadow:0 4px 20px rgba(0,0,0,0.3); background:white;">
+  <h3 id="modal-preco-titulo">Preços</h3>
+  <div class="row">
+    <input id="preco-valor" type="number" step="0.01" placeholder="Preço pago (R$), ex: 120.00">
+    <input id="preco-qtd" type="number" step="0.001" placeholder="Quantidade comprada">
+  </div>
+  <button onclick="registrarPreco()">Registrar novo preço</button>
+  <div id="preco-historico"></div>
+  <button class="secondary" onclick="fecharModalPreco()">Fechar</button>
+</div>
+
+<script>
+const API = "";
+let token = localStorage.getItem("fase1_token") || null;
+
+function headers() {
+  return token ? { "Authorization": "Bearer " + token, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+}
+
+function showDebug(obj) { document.getElementById("debug").textContent = JSON.stringify(obj, null, 2); }
+
+async function signup() {
+  const body = {
+    business_name: document.getElementById("su-business").value,
+    segment: document.getElementById("su-segment").value,
+    timezone: document.getElementById("su-timezone").value,
+    email: document.getElementById("su-email").value,
+    password: document.getElementById("su-password").value,
+  };
+  const resp = await fetch("/auth/signup", { method: "POST", headers: headers(), body: JSON.stringify(body) });
+  const data = await resp.json();
+  if (!resp.ok) { document.getElementById("auth-error").textContent = JSON.stringify(data); return; }
+  token = data.access_token;
+  localStorage.setItem("fase1_token", token);
+  enterApp();
+}
+
+async function login() {
+  const body = { email: document.getElementById("li-email").value, password: document.getElementById("li-password").value };
+  const resp = await fetch("/auth/login", { method: "POST", headers: headers(), body: JSON.stringify(body) });
+  const data = await resp.json();
+  if (!resp.ok) { document.getElementById("auth-error").textContent = JSON.stringify(data); return; }
+  token = data.access_token;
+  localStorage.setItem("fase1_token", token);
+  enterApp();
+}
+
+async function logout() {
+  await fetch("/auth/logout", { method: "POST", headers: headers() });
+  token = null;
+  localStorage.removeItem("fase1_token");
+  document.getElementById("auth-area").style.display = "block";
+  document.getElementById("app-area").style.display = "none";
+}
+
+async function closePeriod() {
+  const idempotencyKey = crypto.randomUUID();
+  const resp = await fetch("/financial-period/close", { method: "POST", headers: headers(), body: JSON.stringify({ idempotency_key: idempotencyKey }) });
+  const data = await resp.json();
+  showDebug(data);
+  await refreshAll();
+}
+
+async function refreshAll() {
+  const b = await (await fetch("/business/me", { headers: headers() })).json();
+  document.getElementById("business-card").innerHTML = `
+    <b>${b.name}</b><br>Segmento: ${b.segment}<br>Moeda: ${b.currency}<br>Timezone: ${b.timezone}<br>Criado em: ${b.created_at}`;
+
+  const c = await (await fetch("/operation-config", { headers: headers() })).json();
+  document.getElementById("config-card").innerHTML = `
+    Método de rateio: ${c.metodo_rateio}<br>
+    Imposto padrão: ${c.imposto_percentual}%<br>
+    Margem alvo alta/baixa: ${c.margem_alvo_alta}% / ${c.margem_alvo_baixa}%<br>
+    Margem perigosa: ${c.margem_perigosa}%<br>
+    Contribuição alvo alta/baixa: ${c.contrib_alvo_alta}% / ${c.contrib_alvo_baixa}%`;
+
+  const p = await (await fetch("/financial-period/current", { headers: headers() })).json();
+  const statusClass = p.status === "ABERTO" ? "status-aberto" : "status-fechado";
+  document.getElementById("period-card").innerHTML = `
+    Status: <span class="${statusClass}">${p.status}</span><br>
+    Início: ${p.data_hora_inicio}<br>
+    Fim: ${p.data_hora_fim || "—"}<br>
+    ID: <code>${p.id}</code>`;
+
+  await refreshInsumos();
+}
+
+async function criarInsumo() {
+  const body = {
+    nome: document.getElementById("ing-nome").value,
+    unidade_compra: document.getElementById("ing-unidade").value,
+  };
+  const perda = document.getElementById("ing-perda").value;
+  const estoqueMin = document.getElementById("ing-estoque-min").value;
+  if (perda !== "") body.perda_percentual = parseFloat(perda);
+  if (estoqueMin !== "") body.estoque_minimo = parseFloat(estoqueMin);
+
+  const resp = await fetch("/ingredients", { method: "POST", headers: headers(), body: JSON.stringify(body) });
+  const data = await resp.json();
+  showDebug(data);
+  if (resp.ok) {
+    document.getElementById("ing-nome").value = "";
+    document.getElementById("ing-perda").value = "";
+    document.getElementById("ing-estoque-min").value = "";
+    await refreshInsumos();
+  }
+}
+
+async function arquivarInsumo(id) {
+  const resp = await fetch(`/ingredients/${id}/archive`, { method: "POST", headers: headers() });
+  showDebug(await resp.json());
+  await refreshInsumos();
+}
+
+async function refreshInsumos() {
+  const resp = await fetch("/ingredients", { headers: headers() });
+  const insumos = await resp.json();
+  const div = document.getElementById("lista-insumos");
+  if (insumos.length === 0) {
+    div.innerHTML = "<p style='color:#888'>Nenhum insumo cadastrado ainda.</p>";
+    return;
+  }
+  div.innerHTML = insumos.map(i => `
+    <div class="card">
+      <b>${i.nome}</b> (${i.unidade_compra})<br>
+      Perda: ${i.perda_percentual}% ${i.estoque_minimo !== null ? "· Estoque mínimo: " + i.estoque_minimo : ""}<br>
+      <button onclick="abrirModalPreco('${i.id}', '${i.nome}', '${i.unidade_compra}')">Ver/Registrar preço</button>
+      <button class="secondary" onclick="arquivarInsumo('${i.id}')">Arquivar</button>
+    </div>
+  `).join("");
+}
+
+let insumoAtualId = null;
+
+async function abrirModalPreco(id, nome, unidade) {
+  insumoAtualId = id;
+  document.getElementById("modal-preco-titulo").textContent = `Preços de "${nome}" (comprado em ${unidade})`;
+  document.getElementById("modal-preco").style.display = "block";
+  await atualizarHistoricoPreco();
+}
+
+function fecharModalPreco() {
+  document.getElementById("modal-preco").style.display = "none";
+  insumoAtualId = null;
+}
+
+async function registrarPreco() {
+  const valorReais = parseFloat(document.getElementById("preco-valor").value);
+  const qtd = parseFloat(document.getElementById("preco-qtd").value);
+  const centavos = Math.round(valorReais * 100);
+  const resp = await fetch(`/ingredients/${insumoAtualId}/prices`, {
+    method: "POST", headers: headers(),
+    body: JSON.stringify({ preco_pago_centavos: centavos, quantidade_comprada: qtd }),
+  });
+  const data = await resp.json();
+  showDebug(data);
+  if (resp.ok) {
+    document.getElementById("preco-valor").value = "";
+    document.getElementById("preco-qtd").value = "";
+    await atualizarHistoricoPreco();
+  }
+}
+
+async function atualizarHistoricoPreco() {
+  const resp = await fetch(`/ingredients/${insumoAtualId}/prices`, { headers: headers() });
+  const historico = await resp.json();
+  const div = document.getElementById("preco-historico");
+  if (historico.length === 0) {
+    div.innerHTML = "<p style='color:#888'>Nenhum preço registrado ainda.</p>";
+    return;
+  }
+  div.innerHTML = "<b>Histórico (mais recente primeiro):</b>" + historico.map((h, idx) => {
+    const custoPorBase = (h.custo_por_base_milicentavos / 100000).toFixed(4);
+    const atual = idx === 0 ? " ← preço atual" : "";
+    return `<div>R$${(h.preco_pago_centavos/100).toFixed(2)} por ${h.quantidade_comprada} → R$${custoPorBase}/unidade-base${atual}</div>`;
+  }).join("");
+}
+
+function enterApp() {
+  document.getElementById("auth-area").style.display = "none";
+  document.getElementById("app-area").style.display = "block";
+  refreshAll();
+}
+
+if (token) { enterApp(); }
+</script>
+
+</body>
+</html>
