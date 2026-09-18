@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vendrix Gestão — Custo, Estoque e Preço</title>
+<title>Talão — Gestão de Custos e Preços</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
    TALÃO — sistema visual
@@ -15,27 +15,27 @@
    pro corpo, mono só pra números de dinheiro (alinhamento tabular).
    ============================================================ */
 :root {
-  --ink: #17152E;
-  --ink-soft: #6E6B85;
-  --ink-faint: #A7A3C0;
-  --paper: #F6F5FB;
-  --paper-raised: #FFFFFF;
-  --line: #E5E2F0;
-  --line-strong: #D2CDE6;
-  --amber: #6C3CE9;
-  --amber-dark: #5A2FD1;
-  --amber-tint: #ECE5FC;
-  --forest: #1F9D6B;
-  --forest-tint: #DEF5EA;
-  --brick: #E23F63;
-  --brick-tint: #FCE3E9;
-  --sidebar: #0D0B2E;
-  --sidebar-text: #C7C3E6;
-  --sidebar-text-dim: #6F6B96;
-  --sidebar-active: #1B1850;
-  --radius: 8px;
-  --shadow: 0 1px 2px rgba(13,11,46,0.06), 0 8px 24px rgba(13,11,46,0.08);
-  --font-display: 'Space Grotesk', sans-serif;
+  --ink: #211C16;
+  --ink-soft: #6B6154;
+  --ink-faint: #A79C8A;
+  --paper: #F3EEE3;
+  --paper-raised: #FFFEFA;
+  --line: #DDD3BF;
+  --line-strong: #C7BA9E;
+  --amber: #B5790A;
+  --amber-dark: #8F5F08;
+  --amber-tint: #F3E1BC;
+  --forest: #33512E;
+  --forest-tint: #DEE8D6;
+  --brick: #9A3324;
+  --brick-tint: #F3DCD5;
+  --sidebar: #211C16;
+  --sidebar-text: #D9CEBA;
+  --sidebar-text-dim: #8A7F6C;
+  --sidebar-active: #332B20;
+  --radius: 3px;
+  --shadow: 0 1px 2px rgba(33,28,22,0.08), 0 4px 12px rgba(33,28,22,0.06);
+  --font-display: 'Roboto Slab', serif;
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'Roboto Mono', monospace;
 }
@@ -75,40 +75,22 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 }
 .auth-brand {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: baseline;
   gap: 10px;
   margin-bottom: 28px;
 }
-.auth-brand-row { display: flex; align-items: center; gap: 10px; }
 .auth-brand .mark {
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 700;
   color: var(--ink);
 }
-.brand-orb {
-  width: 34px;
-  height: 34px;
-  border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
-  background: linear-gradient(135deg, #3FCDE0 0%, #6C3CE9 45%, #E63FC4 100%);
-  flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(108,60,233,0.35);
-}
-.brand-orb-sm { width: 24px; height: 24px; }
-.brand-wordmark { font-family: var(--font-display); font-weight: 700; }
-.brand-wordmark .accent { color: var(--amber); }
 .auth-brand .tagline {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #FFFEFA;
-  background: var(--amber);
-  padding: 6px 14px;
-  border-radius: 20px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--line-strong);
+  padding-left: 10px;
 }
-.auth-brand .subtext { font-size: 13px; color: var(--ink-soft); }
 .auth-panel {
   background: var(--paper-raised);
   border: 1px solid var(--line);
@@ -202,10 +184,10 @@ button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
   font-weight: 700;
   color: #FFFEFA;
   padding: 0 20px 18px;
-  border-bottom: 1px solid #242057;
+  border-bottom: 1px solid #3A3226;
   margin-bottom: 8px;
 }
-.sidebar-business { padding: 12px 20px 16px; border-bottom: 1px solid #242057; margin-bottom: 10px; }
+.sidebar-business { padding: 12px 20px 16px; border-bottom: 1px solid #3A3226; margin-bottom: 10px; }
 .sidebar-business .name { font-weight: 600; color: #FFFEFA; font-size: 14px; }
 .sidebar-business .segment { font-size: 12px; color: var(--sidebar-text-dim); margin-top: 2px; }
 .sidebar-nav { flex: 1; overflow-y: auto; }
@@ -230,7 +212,7 @@ button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .sidebar-item:hover { background: var(--sidebar-active); }
 .sidebar-item.active { background: var(--sidebar-active); border-left-color: var(--amber); color: #FFFEFA; }
 .sidebar-item .icon { width: 16px; text-align: center; opacity: 0.85; }
-.sidebar-footer { padding: 14px 20px 0; border-top: 1px solid #242057; margin-top: 8px; }
+.sidebar-footer { padding: 14px 20px 0; border-top: 1px solid #3A3226; margin-top: 8px; }
 
 .main {
   flex: 1;
@@ -389,12 +371,8 @@ table.data-table tr:hover td { background: var(--paper); }
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-brand">
-      <div class="auth-brand-row">
-        <span class="brand-orb"></span>
-        <span class="mark brand-wordmark">Vend<span class="accent">rix</span></span>
-      </div>
-      <span class="tagline">GESTÃO</span>
-      <span class="subtext">custo, estoque e preço — sem chute</span>
+      <span class="mark">Talão</span>
+      <span class="tagline">custo, estoque e preço — sem chute</span>
     </div>
     <div class="auth-panel">
       <div class="auth-tabs">
@@ -442,10 +420,7 @@ table.data-table tr:hover td { background: var(--paper); }
 <!-- ===================== APP ===================== -->
 <div id="app-screen">
   <aside class="sidebar">
-    <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px;">
-      <span class="brand-orb brand-orb-sm"></span>
-      <span class="brand-wordmark">Vend<span class="accent">rix</span></span>
-    </div>
+    <div class="sidebar-brand">Talão</div>
     <div class="sidebar-business">
       <div class="name" id="sb-business-name">—</div>
       <div class="segment" id="sb-business-segment">—</div>
@@ -738,95 +713,6 @@ if (state.token) { bootApp(); }
 // ============================================================
 // VISÃO GERAL
 // ============================================================
-// ============================================================
-// GUIA DE PRIMEIROS PASSOS — a sequência correta, sempre nessa ordem
-// ============================================================
-const ONBOARDING_STEPS = [
-  { n: 1, label: 'Cadastrar um insumo', section: 'insumos', desc: 'Os ingredientes que você compra: carne, pão, queijo…' },
-  { n: 2, label: 'Registrar o preço do insumo', section: 'insumos', desc: 'Quanto você pagou — sem isso não dá pra calcular custo de nada.' },
-  { n: 3, label: 'Montar uma ficha técnica', section: 'fichas-tecnicas', desc: 'A receita: quais insumos entram e quanto de cada um.' },
-  { n: 4, label: 'Criar o produto', section: 'produtos', desc: 'A ficha técnica + embalagem = o item que vai pro cardápio.' },
-  { n: 5, label: 'Cadastrar um canal de venda', section: 'canais', desc: 'Presencial, iFood… pode fazer isso a qualquer momento.' },
-  { n: 6, label: 'Definir o preço no canal', section: 'produtos', desc: 'Dentro do produto, escolha o canal e a margem desejada.' },
-  { n: 7, label: 'Registrar a primeira venda', section: 'vendas', desc: 'Só é possível depois que o passo 6 estiver pronto.' },
-];
-
-async function computeOnboardingStatus() {
-  const status = new Array(8).fill(false);
-  try {
-    const ingredients = await api('/ingredients?incluir_arquivados=true');
-    status[1] = ingredients.length > 0;
-    if (status[1]) {
-      for (const ing of ingredients.slice(0, 8)) {
-        const precos = await api(`/ingredients/${ing.id}/prices`);
-        if (precos.length > 0) { status[2] = true; break; }
-      }
-    }
-    const recipes = await api('/recipes?incluir_arquivados=true');
-    status[3] = recipes.some(r => r.itens && r.itens.length > 0);
-    const products = await api('/products?incluir_arquivados=true');
-    status[4] = products.length > 0;
-    const channels = await api('/channels?incluir_arquivados=true');
-    status[5] = channels.length > 0;
-    if (status[4] && status[5]) {
-      for (const p of products.slice(0, 8)) {
-        const pricings = await api(`/products/${p.id}/pricing`);
-        if (pricings.length > 0) { status[6] = true; break; }
-      }
-    }
-    const sales = await api('/sales');
-    status[7] = sales.some(s => s.status === 'confirmada');
-  } catch (e) { /* se algo falhar, mostra o guia mesmo assim com o que deu certo */ }
-  return status;
-}
-
-function renderOnboardingCard(status) {
-  const done = status.filter(Boolean).length - 1; // -1 porque status[0] nao existe
-  const total = ONBOARDING_STEPS.length;
-  if (done >= total) {
-    return `<div class="card" style="border-color:var(--forest-tint);background:var(--forest-tint);margin-bottom:20px;">
-      <strong style="color:var(--forest);">✓ Primeiros passos completos</strong> — seu negócio já passou pelo ciclo inteiro, do insumo à venda.
-      <button class="btn btn-sm btn-secondary" style="float:right;" onclick="toggleOnboardingCard()">Ver de novo</button>
-    </div>`;
-  }
-  let proximoPassoEncontrado = false;
-  const itensHtml = ONBOARDING_STEPS.map(step => {
-    const feito = status[step.n];
-    let estadoClasse = 'pending';
-    let botao = '';
-    if (feito) {
-      estadoClasse = 'done';
-    } else if (!proximoPassoEncontrado) {
-      estadoClasse = 'current';
-      proximoPassoEncontrado = true;
-      botao = `<button class="btn btn-sm btn-primary" onclick="goToSection('${step.section}')">Ir para lá</button>`;
-    }
-    const numeroHtml = feito
-      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--forest);color:#fff;font-weight:700;font-size:13px;">✓</span>`
-      : `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${estadoClasse==='current'?'var(--amber)':'var(--line)'};color:${estadoClasse==='current'?'#fff':'var(--ink-faint)'};font-weight:700;font-size:13px;">${step.n}</span>`;
-    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);opacity:${estadoClasse==='pending'?'0.55':'1'};">
-      ${numeroHtml}
-      <div style="flex:1;">
-        <div style="font-weight:600;font-size:13.5px;">${esc(step.label)}</div>
-        <div class="hint">${esc(step.desc)}</div>
-      </div>
-      ${botao}
-    </div>`;
-  }).join('');
-
-  return `<div class="card" id="onboarding-card" style="margin-bottom:20px;">
-    <h3>Primeiros passos <span class="count">${Math.max(done,0)}/${total}</span></h3>
-    <p class="section-intro" style="margin-bottom:6px;">Siga essa ordem — cada passo depende do anterior.</p>
-    ${itensHtml}
-  </div>`;
-}
-
-function toggleOnboardingCard() {
-  const existing = document.getElementById('onboarding-card');
-  if (existing) { existing.closest('.card').remove(); return; }
-  goToSection('visao-geral');
-}
-
 SECTION_RENDERERS['visao-geral'] = async function () {
   state.business = await api('/business/me');
   state.config = await api('/operation-config');
@@ -836,10 +722,7 @@ SECTION_RENDERERS['visao-geral'] = async function () {
 
   const b = state.business, c = state.config, p = state.period;
   const el = document.getElementById('section-visao-geral');
-  el.innerHTML = `<div class="loading-spinner">Carregando…</div>`;
-  const onboardingStatus = await computeOnboardingStatus();
   el.innerHTML = `
-    ${renderOnboardingCard(onboardingStatus)}
     <div class="grid-3" style="margin-bottom:20px;">
       <div class="stat"><div class="label">Período financeiro</div>
         <div class="value" style="font-size:18px;">${p.status === 'ABERTO' ? '<span class=\"pill pill-ok\">ABERTO</span>' : '<span class=\"pill pill-neutral\">FECHADO</span>'}</div>
