@@ -527,6 +527,20 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// Aceita tanto "4,90" (padrão brasileiro) quanto "4.90" (padrão americano) —
+// corrige o bug em que o campo de número do navegador ignorava a vírgula
+// silenciosamente e concatenava os dígitos (ex: "4,90" virava 490).
+function parseNumBR(str) {
+  if (str === null || str === undefined) return NaN;
+  str = String(str).trim();
+  if (str === '') return NaN;
+  if (str.includes(',')) {
+    // vírgula presente: é o separador decimal — remove pontos (milhar) antes
+    str = str.replace(/\./g, '').replace(',', '.');
+  }
+  return parseFloat(str);
+}
+
 // --- Modal genérico ---
 function openModal(title, bodyHtml, footerButtons) {
   document.getElementById('modal-title').textContent = title;
@@ -750,25 +764,25 @@ function openConfigModal() {
   const c = state.config;
   openModal('Editar configuração operacional', `
     <div class="field-row">
-      <div class="field"><label>Imposto padrão (%)</label><input type="number" step="0.01" id="cfg-imposto" value="${c.imposto_percentual}"></div>
-      <div class="field"><label>Custo/hora funcionário (R$)</label><input type="number" step="0.01" id="cfg-custo-hora" value="${(c.custo_hora_funcionario_centavos/100).toFixed(2)}"></div>
+      <div class="field"><label>Imposto padrão (%)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-imposto" value="${c.imposto_percentual}"></div>
+      <div class="field"><label>Custo/hora funcionário (R$)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-custo-hora" value="${(c.custo_hora_funcionario_centavos/100).toFixed(2)}"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Margem alvo alta (%)</label><input type="number" step="0.01" id="cfg-margem-alta" value="${c.margem_alvo_alta}"></div>
-      <div class="field"><label>Margem alvo baixa (%)</label><input type="number" step="0.01" id="cfg-margem-baixa" value="${c.margem_alvo_baixa}"></div>
+      <div class="field"><label>Margem alvo alta (%)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-margem-alta" value="${c.margem_alvo_alta}"></div>
+      <div class="field"><label>Margem alvo baixa (%)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-margem-baixa" value="${c.margem_alvo_baixa}"></div>
     </div>
-    <div class="field"><label>Alíquota de imposto sobre lucro (%, opcional)</label><input type="number" step="0.01" id="cfg-aliquota" value="${c.aliquota_imposto_lucro ?? ''}" placeholder="Deixe em branco se não souber ainda"></div>
+    <div class="field"><label>Alíquota de imposto sobre lucro (%, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-aliquota" value="${c.aliquota_imposto_lucro ?? ''}" placeholder="Deixe em branco se não souber ainda"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: 'Salvar', cls: 'btn-primary', onClick: async () => {
       const aliq = document.getElementById('cfg-aliquota').value;
       try {
         await api('/operation-config', { method: 'PATCH', body: JSON.stringify({
-          imposto_percentual: parseFloat(document.getElementById('cfg-imposto').value),
-          custo_hora_funcionario_centavos: Math.round(parseFloat(document.getElementById('cfg-custo-hora').value) * 100),
-          margem_alvo_alta: parseFloat(document.getElementById('cfg-margem-alta').value),
-          margem_alvo_baixa: parseFloat(document.getElementById('cfg-margem-baixa').value),
-          aliquota_imposto_lucro: aliq === '' ? null : parseFloat(aliq),
+          imposto_percentual: parseNumBR(document.getElementById('cfg-imposto').value),
+          custo_hora_funcionario_centavos: Math.round(parseNumBR(document.getElementById('cfg-custo-hora').value) * 100),
+          margem_alvo_alta: parseNumBR(document.getElementById('cfg-margem-alta').value),
+          margem_alvo_baixa: parseNumBR(document.getElementById('cfg-margem-baixa').value),
+          aliquota_imposto_lucro: aliq === '' ? null : parseNumBR(aliq),
         })});
         closeModal();
         toast('Configuração atualizada.');
@@ -830,17 +844,17 @@ async function openIngredientModal(id) {
           ${['kg','g','L','ml','un'].map(u => `<option value="${u}" ${ing.unidade_compra===u?'selected':''}>${u}</option>`).join('')}
         </select>
       </div>
-      <div class="field"><label>Perda no preparo (%)</label><input type="number" step="0.01" id="ing-perda" value="${ing.perda_percentual}"></div>
+      <div class="field"><label>Perda no preparo (%)</label><input type="text" inputmode="decimal" step="0.01" id="ing-perda" value="${ing.perda_percentual}"></div>
     </div>
-    <div class="field"><label>Estoque mínimo (opcional, alerta)</label><input type="number" step="0.001" id="ing-estoque-min" value="${ing.estoque_minimo ?? ''}"></div>
+    <div class="field"><label>Estoque mínimo (opcional, alerta)</label><input type="text" inputmode="decimal" step="0.001" id="ing-estoque-min" value="${ing.estoque_minimo ?? ''}"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
       const min = document.getElementById('ing-estoque-min').value;
       const payload = {
         nome: document.getElementById('ing-nome').value,
-        perda_percentual: parseFloat(document.getElementById('ing-perda').value || 0),
-        estoque_minimo: min === '' ? null : parseFloat(min),
+        perda_percentual: parseNumBR(document.getElementById('ing-perda').value || 0),
+        estoque_minimo: min === '' ? null : parseNumBR(min),
       };
       if (!id) payload.unidade_compra = document.getElementById('ing-unidade').value;
       try {
@@ -868,8 +882,8 @@ async function openIngredientPriceModal(id, nome, unidade) {
 
   openModal(`Preço — ${esc(nome)}`, `
     <div class="field-row">
-      <div class="field"><label>Preço pago (R$)</label><input type="number" step="0.01" id="price-valor" placeholder="Ex: 120.00"></div>
-      <div class="field"><label>Quantidade comprada (${unidade})</label><input type="number" step="0.001" id="price-qtd" placeholder="Ex: 5"></div>
+      <div class="field"><label>Preço pago (R$)</label><input type="text" inputmode="decimal" step="0.01" id="price-valor" placeholder="Ex: 120.00"></div>
+      <div class="field"><label>Quantidade comprada (${unidade})</label><input type="text" inputmode="decimal" step="0.001" id="price-qtd" placeholder="Ex: 5"></div>
     </div>
     <button class="btn btn-primary" onclick="registrarPrecoInsumo('${id}', '${esc(nome)}', '${unidade}')">Registrar novo preço</button>
     <hr class="divider">
@@ -879,8 +893,8 @@ async function openIngredientPriceModal(id, nome, unidade) {
 }
 
 async function registrarPrecoInsumo(id, nome, unidade) {
-  const valor = parseFloat(document.getElementById('price-valor').value);
-  const qtd = parseFloat(document.getElementById('price-qtd').value);
+  const valor = parseNumBR(document.getElementById('price-valor').value);
+  const qtd = parseNumBR(document.getElementById('price-qtd').value);
   if (!valor || !qtd) { toast('Preencha preço e quantidade.', 'error'); return; }
   try {
     await api(`/ingredients/${id}/prices`, { method: 'POST', body: JSON.stringify({ preco_pago_centavos: Math.round(valor*100), quantidade_comprada: qtd }) });
@@ -903,13 +917,13 @@ async function openIngredientMovementsModal(id, nome) {
     <div class="grid-2">
       <div>
         <label>Registrar perda</label>
-        <input type="number" step="0.001" id="mov-perda-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
+        <input type="text" inputmode="decimal" step="0.001" id="mov-perda-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
         <input type="text" id="mov-perda-nota" placeholder="Motivo (obrigatório)" style="margin-bottom:6px;">
         <button class="btn btn-sm btn-danger btn-block" onclick="registrarMovimento('${id}', 'loss', '${esc(nome)}')">Registrar perda</button>
       </div>
       <div>
         <label>Consumo interno</label>
-        <input type="number" step="0.001" id="mov-consumo-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
+        <input type="text" inputmode="decimal" step="0.001" id="mov-consumo-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
         <input type="text" id="mov-consumo-nota" placeholder="Motivo (obrigatório)" style="margin-bottom:6px;">
         <button class="btn btn-sm btn-secondary btn-block" onclick="registrarMovimento('${id}', 'internal-consumption', '${esc(nome)}')">Registrar consumo</button>
       </div>
@@ -917,7 +931,7 @@ async function openIngredientMovementsModal(id, nome) {
     <hr class="divider">
     <label>Ajuste (contagem física — define o saldo exato)</label>
     <div class="field-row">
-      <input type="number" step="0.001" id="mov-ajuste-saldo" placeholder="Novo saldo total">
+      <input type="text" inputmode="decimal" step="0.001" id="mov-ajuste-saldo" placeholder="Novo saldo total">
       <input type="text" id="mov-ajuste-nota" placeholder="Justificativa (obrigatória)">
     </div>
     <button class="btn btn-sm btn-primary" onclick="registrarAjuste('${id}', '${esc(nome)}')">Registrar ajuste</button>
@@ -928,7 +942,7 @@ async function openIngredientMovementsModal(id, nome) {
 }
 
 async function registrarMovimento(id, endpoint, nome) {
-  const qtd = parseFloat(document.getElementById(endpoint === 'loss' ? 'mov-perda-qtd' : 'mov-consumo-qtd').value);
+  const qtd = parseNumBR(document.getElementById(endpoint === 'loss' ? 'mov-perda-qtd' : 'mov-consumo-qtd').value);
   const nota = document.getElementById(endpoint === 'loss' ? 'mov-perda-nota' : 'mov-consumo-nota').value;
   if (!qtd || !nota) { toast('Preencha quantidade e motivo.', 'error'); return; }
   try {
@@ -939,7 +953,7 @@ async function registrarMovimento(id, endpoint, nome) {
 }
 
 async function registrarAjuste(id, nome) {
-  const saldo = parseFloat(document.getElementById('mov-ajuste-saldo').value);
+  const saldo = parseNumBR(document.getElementById('mov-ajuste-saldo').value);
   const nota = document.getElementById('mov-ajuste-nota').value;
   if (isNaN(saldo) || !nota) { toast('Preencha o novo saldo e a justificativa.', 'error'); return; }
   try {
@@ -1046,8 +1060,8 @@ function renderPurchaseModalBody(suppliers, ingredients) {
       <div class="field"><label>Insumo</label>
         <select id="purch-item-ingredient">${ingredients.map(i => `<option value="${i.id}">${esc(i.nome)} (${i.unidade_compra})</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="purch-item-qtd"></div>
-      <div class="field"><label>Preço total (R$)</label><input type="number" step="0.01" id="purch-item-preco"></div>
+      <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" step="0.001" id="purch-item-qtd"></div>
+      <div class="field"><label>Preço total (R$)</label><input type="text" inputmode="decimal" step="0.01" id="purch-item-preco"></div>
     </div>
     <button class="btn btn-sm btn-secondary" onclick="addPurchaseItem()">Adicionar à compra</button>
     <hr class="divider">
@@ -1055,8 +1069,8 @@ function renderPurchaseModalBody(suppliers, ingredients) {
     <div id="purch-itens-list">${itensHtml}</div>
     <hr class="divider">
     <div class="field-row">
-      <div class="field"><label>Frete total (R$, opcional)</label><input type="number" step="0.01" id="purch-frete" value="0"></div>
-      <div class="field"><label>Outros custos (R$, opcional)</label><input type="number" step="0.01" id="purch-outros" value="0"></div>
+      <div class="field"><label>Frete total (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="purch-frete" value="0"></div>
+      <div class="field"><label>Outros custos (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="purch-outros" value="0"></div>
     </div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1066,8 +1080,8 @@ function renderPurchaseModalBody(suppliers, ingredients) {
         await api('/purchases', { method: 'POST', body: JSON.stringify({
           supplier_id: document.getElementById('purch-supplier').value,
           itens: compraItensTemp,
-          frete_centavos: Math.round(parseFloat(document.getElementById('purch-frete').value || 0) * 100),
-          outros_custos_centavos: Math.round(parseFloat(document.getElementById('purch-outros').value || 0) * 100),
+          frete_centavos: Math.round(parseNumBR(document.getElementById('purch-frete').value || 0) * 100),
+          outros_custos_centavos: Math.round(parseNumBR(document.getElementById('purch-outros').value || 0) * 100),
         })});
         closeModal(); toast('Compra registrada — estoque e preço atualizados.'); goToSection('compras');
       } catch (err) { toast(err.message, 'error'); }
@@ -1078,8 +1092,8 @@ function renderPurchaseModalBody(suppliers, ingredients) {
 
 function addPurchaseItem() {
   const ingredient_id = document.getElementById('purch-item-ingredient').value;
-  const quantidade_comprada = parseFloat(document.getElementById('purch-item-qtd').value);
-  const preco_total_centavos = Math.round(parseFloat(document.getElementById('purch-item-preco').value || 0) * 100);
+  const quantidade_comprada = parseNumBR(document.getElementById('purch-item-qtd').value);
+  const preco_total_centavos = Math.round(parseNumBR(document.getElementById('purch-item-preco').value || 0) * 100);
   if (!quantidade_comprada || !preco_total_centavos) { toast('Preencha quantidade e preço do item.', 'error'); return; }
   compraItensTemp.push({ ingredient_id, quantidade_comprada, preco_total_centavos });
   const { suppliers, ingredients } = window._purchaseModalData;
@@ -1118,13 +1132,13 @@ SECTION_RENDERERS['fichas-tecnicas'] = async function () {
 async function openRecipeCreateModal() {
   openModal('Nova ficha técnica', `
     <div class="field"><label>Nome</label><input type="text" id="rec-nome" placeholder="Ex: Receita X-Burger"></div>
-    <div class="field"><label>Tempo de preparo em minutos (opcional)</label><input type="number" step="0.1" id="rec-tempo"></div>
+    <div class="field"><label>Tempo de preparo em minutos (opcional)</label><input type="text" inputmode="decimal" step="0.1" id="rec-tempo"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: 'Criar', cls: 'btn-primary', onClick: async () => {
       const tempo = document.getElementById('rec-tempo').value;
       try {
-        const r = await api('/recipes', { method: 'POST', body: JSON.stringify({ nome: document.getElementById('rec-nome').value, tempo_preparo_minutos: tempo === '' ? null : parseFloat(tempo) })});
+        const r = await api('/recipes', { method: 'POST', body: JSON.stringify({ nome: document.getElementById('rec-nome').value, tempo_preparo_minutos: tempo === '' ? null : parseNumBR(tempo) })});
         closeModal(); toast('Ficha técnica criada. Agora adicione os insumos.');
         openRecipeDetailModal(r.id);
       } catch (err) { toast(err.message, 'error'); }
@@ -1151,7 +1165,7 @@ async function openRecipeDetailModal(id) {
       <div class="field"><label>Insumo</label>
         <select id="rec-item-ingredient">${ingredients.map(i => `<option value="${i.id}">${esc(i.nome)}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Quantidade (unidade-base)</label><input type="number" step="0.001" id="rec-item-qtd" placeholder="g, ml ou un"></div>
+      <div class="field"><label>Quantidade (unidade-base)</label><input type="text" inputmode="decimal" step="0.001" id="rec-item-qtd" placeholder="g, ml ou un"></div>
     </div>
     <button class="btn btn-sm btn-secondary" onclick="addRecipeItem('${id}')">Adicionar à receita</button>
   `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('fichas-tecnicas'); } }]);
@@ -1159,7 +1173,7 @@ async function openRecipeDetailModal(id) {
 
 async function addRecipeItem(recipeId) {
   const ingredient_id = document.getElementById('rec-item-ingredient').value;
-  const quantidade = parseFloat(document.getElementById('rec-item-qtd').value);
+  const quantidade = parseNumBR(document.getElementById('rec-item-qtd').value);
   if (!quantidade) { toast('Informe a quantidade.', 'error'); return; }
   try {
     await api(`/recipes/${recipeId}/items`, { method: 'POST', body: JSON.stringify({ ingredient_id, quantidade })});
@@ -1224,7 +1238,7 @@ async function openProductCreateModal() {
       <div class="field"><label>Unidade de venda</label>
         <select id="prod-unidade-venda">${['un','kg','g','L','ml'].map(u => `<option value="${u}">${u}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Embalagem (R$, opcional)</label><input type="number" step="0.01" id="prod-embalagem" value="0"></div>
+      <div class="field"><label>Embalagem (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="prod-embalagem" value="0"></div>
     </div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1234,7 +1248,7 @@ async function openProductCreateModal() {
         nome: document.getElementById('prod-nome').value,
         tipo,
         unidade_venda: document.getElementById('prod-unidade-venda').value,
-        embalagem_centavos: Math.round(parseFloat(document.getElementById('prod-embalagem').value || 0) * 100),
+        embalagem_centavos: Math.round(parseNumBR(document.getElementById('prod-embalagem').value || 0) * 100),
         recipe_id: tipo === 'combo' ? null : document.getElementById('prod-recipe').value,
       };
       try {
@@ -1267,7 +1281,7 @@ async function openProductDetailModal(id) {
       <div>${itensHtml}</div>
       <div class="field-row" style="margin-top:10px;">
         <div class="field"><label>Adicionar produto</label><select id="combo-item-product">${others.map(o => `<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>
-        <div class="field"><label>Quantidade</label><input type="number" step="1" id="combo-item-qtd" value="1"></div>
+        <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" step="1" id="combo-item-qtd" value="1"></div>
       </div>
       <button class="btn btn-sm btn-secondary" onclick="addComboItem('${id}')">Adicionar ao combo</button>`;
   } else if (p.tipo === 'pizza_fracionada') {
@@ -1282,7 +1296,7 @@ async function openProductDetailModal(id) {
       <div>${itensHtml}</div>
       <div class="field-row" style="margin-top:10px;">
         <div class="field"><label>Sabor (produto simples)</label><select id="pizza-sabor-product">${sabores.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('')}</select></div>
-        <div class="field"><label>Fração (ex: 0.5 = metade)</label><input type="number" step="0.01" min="0.01" max="1" id="pizza-sabor-fracao" value="0.5"></div>
+        <div class="field"><label>Fração (ex: 0.5 = metade)</label><input type="text" inputmode="decimal" step="0.01" min="0.01" max="1" id="pizza-sabor-fracao" value="0.5"></div>
       </div>
       <button class="btn btn-sm btn-secondary" onclick="addPizzaSabor('${id}')">Adicionar sabor</button>`;
   } else {
@@ -1299,7 +1313,7 @@ async function openProductDetailModal(id) {
     <div id="product-pricing-list">Carregando…</div>
     <div class="field-row">
       <div class="field"><label>Canal</label><select id="pricing-channel"></select></div>
-      <div class="field"><label>Margem desejada (%)</label><input type="number" step="0.01" id="pricing-margem" value="30"></div>
+      <div class="field"><label>Margem desejada (%)</label><input type="text" inputmode="decimal" step="0.01" id="pricing-margem" value="30"></div>
     </div>
     <button class="btn btn-sm btn-secondary" onclick="createProductPricing('${id}')">Precificar neste canal</button>
   `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('produtos'); } }]);
@@ -1328,7 +1342,7 @@ async function loadProductPricing(productId) {
 }
 async function createProductPricing(productId) {
   const channel_id = document.getElementById('pricing-channel').value;
-  const margem = parseFloat(document.getElementById('pricing-margem').value);
+  const margem = parseNumBR(document.getElementById('pricing-margem').value);
   if (!channel_id) { toast('Selecione um canal.', 'error'); return; }
   try {
     await api(`/products/${productId}/pricing`, { method: 'POST', body: JSON.stringify({ channel_id, margem_desejada_percentual: margem }) });
@@ -1339,7 +1353,7 @@ async function createProductPricing(productId) {
 
 async function addComboItem(comboId) {
   const component_product_id = document.getElementById('combo-item-product').value;
-  const quantidade = parseFloat(document.getElementById('combo-item-qtd').value || 1);
+  const quantidade = parseNumBR(document.getElementById('combo-item-qtd').value || 1);
   try {
     await api(`/products/${comboId}/combo-items`, { method: 'POST', body: JSON.stringify({ component_product_id, quantidade }) });
     toast('Componente adicionado.'); openProductDetailModal(comboId);
@@ -1351,7 +1365,7 @@ async function removeComboItem(comboId, itemId) {
 }
 async function addPizzaSabor(pizzaId) {
   const sabor_product_id = document.getElementById('pizza-sabor-product').value;
-  const fracao = parseFloat(document.getElementById('pizza-sabor-fracao').value);
+  const fracao = parseNumBR(document.getElementById('pizza-sabor-fracao').value);
   try {
     await api(`/products/${pizzaId}/pizza-sabores`, { method: 'POST', body: JSON.stringify({ sabor_product_id, fracao }) });
     toast('Sabor adicionado.'); openProductDetailModal(pizzaId);
@@ -1396,19 +1410,19 @@ async function openChannelModal(id) {
   openModal(id ? 'Editar canal' : 'Novo canal', `
     <div class="field"><label>Nome</label><input type="text" id="ch-nome" value="${esc(c.nome)}" placeholder="Ex: iFood"></div>
     <div class="field-row">
-      <div class="field"><label>Taxa percentual (%)</label><input type="number" step="0.01" id="ch-taxa-pct" value="${c.taxa_percentual}"></div>
-      <div class="field"><label>Taxa fixa por pedido (R$)</label><input type="number" step="0.01" id="ch-taxa-fixa" value="${(c.taxa_fixa_centavos/100).toFixed(2)}"></div>
+      <div class="field"><label>Taxa percentual (%)</label><input type="text" inputmode="decimal" step="0.01" id="ch-taxa-pct" value="${c.taxa_percentual}"></div>
+      <div class="field"><label>Taxa fixa por pedido (R$)</label><input type="text" inputmode="decimal" step="0.01" id="ch-taxa-fixa" value="${(c.taxa_fixa_centavos/100).toFixed(2)}"></div>
     </div>
-    <div class="field"><label>Imposto próprio (%, opcional — senão usa o padrão do negócio)</label><input type="number" step="0.01" id="ch-imposto" value="${c.imposto_override_percentual ?? ''}"></div>
+    <div class="field"><label>Imposto próprio (%, opcional — senão usa o padrão do negócio)</label><input type="text" inputmode="decimal" step="0.01" id="ch-imposto" value="${c.imposto_override_percentual ?? ''}"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
       const imp = document.getElementById('ch-imposto').value;
       const payload = {
         nome: document.getElementById('ch-nome').value,
-        taxa_percentual: parseFloat(document.getElementById('ch-taxa-pct').value || 0),
-        taxa_fixa_centavos: Math.round(parseFloat(document.getElementById('ch-taxa-fixa').value || 0) * 100),
-        imposto_override_percentual: imp === '' ? null : parseFloat(imp),
+        taxa_percentual: parseNumBR(document.getElementById('ch-taxa-pct').value || 0),
+        taxa_fixa_centavos: Math.round(parseNumBR(document.getElementById('ch-taxa-fixa').value || 0) * 100),
+        imposto_override_percentual: imp === '' ? null : parseNumBR(imp),
       };
       try {
         if (id) await api(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -1461,7 +1475,7 @@ async function openSaleModal() {
   openModal('Registrar venda', `
     <div class="field"><label>Produto</label><select id="sale-product">${ativos.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
     <div class="field"><label>Canal</label><select id="sale-channel">${channels.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
-    <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="sale-qtd" value="1"></div>
+    <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" step="0.001" id="sale-qtd" value="1"></div>
     <div class="checkbox-row"><input type="checkbox" id="sale-redondo"> <label style="margin:0;">Usar preço redondo (arredondado pra ,90)</label></div>
     <p class="hint">O preço vem da precificação já configurada para este produto neste canal — se não houver, a venda é rejeitada.</p>
   `, [
@@ -1471,7 +1485,7 @@ async function openSaleModal() {
         const s = await api('/sales', { method: 'POST', body: JSON.stringify({
           product_id: document.getElementById('sale-product').value,
           channel_id: document.getElementById('sale-channel').value,
-          quantidade: parseFloat(document.getElementById('sale-qtd').value),
+          quantidade: parseNumBR(document.getElementById('sale-qtd').value),
           usar_preco_redondo: document.getElementById('sale-redondo').checked,
           idempotency_key: uuid(),
         })});
@@ -1501,14 +1515,14 @@ async function viewSaleDetail(id) {
     ${devolucoes.length ? devolucoes.map(d => `<div class="receipt-line"><span class="label">${fmtDate(d.criado_em)} — ${esc(d.motivo)}</span><span class="value">${d.quantidade_devolvida}</span></div>`).join('') : '<p class="hint">Nenhuma devolução.</p>'}
     ${s.status === 'confirmada' ? `
     <div class="field-row" style="margin-top:10px;">
-      <input type="number" step="0.001" id="return-qtd" placeholder="Qtd a devolver">
+      <input type="text" inputmode="decimal" step="0.001" id="return-qtd" placeholder="Qtd a devolver">
       <input type="text" id="return-motivo" placeholder="Motivo">
     </div>
     <button class="btn btn-sm btn-secondary" onclick="registrarDevolucao('${id}')">Registrar devolução parcial</button>` : ''}
   `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('vendas'); } }]);
 }
 async function registrarDevolucao(saleId) {
-  const quantidade_devolvida = parseFloat(document.getElementById('return-qtd').value);
+  const quantidade_devolvida = parseNumBR(document.getElementById('return-qtd').value);
   const motivo = document.getElementById('return-motivo').value;
   if (!quantidade_devolvida || !motivo) { toast('Preencha quantidade e motivo.', 'error'); return; }
   try {
@@ -1591,11 +1605,11 @@ async function openPromotionModal() {
         <option value="valor_fixo">Valor fixo</option>
       </select>
     </div>
-    <div class="field" id="promo-pct-field"><label>Desconto (%)</label><input type="number" step="0.01" id="promo-desconto-pct" value="10"></div>
-    <div class="field" id="promo-fixo-field" style="display:none;"><label>Desconto (R$)</label><input type="number" step="0.01" id="promo-desconto-fixo"></div>
+    <div class="field" id="promo-pct-field"><label>Desconto (%)</label><input type="text" inputmode="decimal" step="0.01" id="promo-desconto-pct" value="10"></div>
+    <div class="field" id="promo-fixo-field" style="display:none;"><label>Desconto (R$)</label><input type="text" inputmode="decimal" step="0.01" id="promo-desconto-fixo"></div>
     <div class="field-row">
-      <div class="field"><label>% que o canal banca do desconto</label><input type="number" step="0.01" id="promo-pct-canal" value="0"></div>
-      <div class="field"><label>Subsídio máximo (R$, opcional)</label><input type="number" step="0.01" id="promo-subsidio-max"></div>
+      <div class="field"><label>% que o canal banca do desconto</label><input type="text" inputmode="decimal" step="0.01" id="promo-pct-canal" value="0"></div>
+      <div class="field"><label>Subsídio máximo (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="promo-subsidio-max"></div>
     </div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1607,10 +1621,10 @@ async function openPromotionModal() {
         channel_id: document.getElementById('promo-channel').value,
         nome: document.getElementById('promo-nome').value,
         tipo_desconto: tipo,
-        desconto_percentual: tipo === 'percentual' ? parseFloat(document.getElementById('promo-desconto-pct').value) : null,
-        desconto_fixo_centavos: tipo === 'valor_fixo' ? Math.round(parseFloat(document.getElementById('promo-desconto-fixo').value) * 100) : null,
-        percentual_canal: parseFloat(document.getElementById('promo-pct-canal').value || 0),
-        subsidio_maximo_centavos: subMax === '' ? null : Math.round(parseFloat(subMax) * 100),
+        desconto_percentual: tipo === 'percentual' ? parseNumBR(document.getElementById('promo-desconto-pct').value) : null,
+        desconto_fixo_centavos: tipo === 'valor_fixo' ? Math.round(parseNumBR(document.getElementById('promo-desconto-fixo').value) * 100) : null,
+        percentual_canal: parseNumBR(document.getElementById('promo-pct-canal').value || 0),
+        subsidio_maximo_centavos: subMax === '' ? null : Math.round(parseNumBR(subMax) * 100),
       };
       try {
         await api('/promotions', { method: 'POST', body: JSON.stringify(payload) });
@@ -1659,11 +1673,11 @@ async function openFixedCostModal(id) {
   if (id) f = await api(`/fixed-costs/${id}`);
   openModal(id ? 'Editar custo fixo' : 'Novo custo fixo', `
     <div class="field"><label>Nome</label><input type="text" id="fc-nome" value="${esc(f.nome)}" placeholder="Ex: Aluguel"></div>
-    <div class="field"><label>Valor mensal (R$)</label><input type="number" step="0.01" id="fc-valor" value="${(f.valor_mensal_centavos/100).toFixed(2)}"></div>
+    <div class="field"><label>Valor mensal (R$)</label><input type="text" inputmode="decimal" step="0.01" id="fc-valor" value="${(f.valor_mensal_centavos/100).toFixed(2)}"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
-      const payload = { nome: document.getElementById('fc-nome').value, valor_mensal_centavos: Math.round(parseFloat(document.getElementById('fc-valor').value) * 100) };
+      const payload = { nome: document.getElementById('fc-nome').value, valor_mensal_centavos: Math.round(parseNumBR(document.getElementById('fc-valor').value) * 100) };
       try {
         if (id) await api(`/fixed-costs/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
         else await api('/fixed-costs', { method: 'POST', body: JSON.stringify(payload) });
@@ -1700,7 +1714,7 @@ async function openExpenseModal() {
       <select id="exp-tipo"><option value="financeira">Financeira (juros, taxas)</option><option value="nao_operacional">Não-operacional</option></select>
     </div>
     <div class="field"><label>Nome</label><input type="text" id="exp-nome" placeholder="Ex: Juros do empréstimo"></div>
-    <div class="field"><label>Valor (R$)</label><input type="number" step="0.01" id="exp-valor"></div>
+    <div class="field"><label>Valor (R$)</label><input type="text" inputmode="decimal" step="0.01" id="exp-valor"></div>
     <p class="hint">Sempre vinculada ao período financeiro aberto agora.</p>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1709,7 +1723,7 @@ async function openExpenseModal() {
         await api('/expenses', { method: 'POST', body: JSON.stringify({
           tipo: document.getElementById('exp-tipo').value,
           nome: document.getElementById('exp-nome').value,
-          valor_centavos: Math.round(parseFloat(document.getElementById('exp-valor').value) * 100),
+          valor_centavos: Math.round(parseNumBR(document.getElementById('exp-valor').value) * 100),
         })});
         closeModal(); toast('Despesa registrada.'); goToSection('despesas');
       } catch (err) { toast(err.message, 'error'); }
