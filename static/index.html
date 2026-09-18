@@ -1026,7 +1026,7 @@ async function openIngredientPriceModal(id, nome, unidade) {
   const linhas = historico.map((h, idx) => `
     <div class="receipt-line">
       <span class="label">${fmtDate(h.vigente_desde)} · ${money(h.preco_pago_centavos)} / ${h.quantidade_comprada}${unidade}</span>
-      <span class="value">${money(h.custo_por_base_milicentavos / 100)}/base${idx===0 ? ' <span class=\"pill pill-ok\">atual</span>' : ''}</span>
+      <span class="value">${money(h.custo_por_base_milicentavos / 1000)}/base${idx===0 ? ' <span class=\"pill pill-ok\">atual</span>' : ''}</span>
     </div>`).join('') || '<p class="hint">Nenhum preço registrado ainda.</p>';
 
   openModal(`Preço — ${esc(nome)}`, `
