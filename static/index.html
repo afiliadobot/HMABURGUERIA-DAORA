@@ -566,6 +566,26 @@ function parseNumBR(str) {
   return parseFloat(str);
 }
 
+// Camada extra de proteção: enquanto o usuário digita em QUALQUER campo
+// decimal, limpa em tempo real — nunca deixa acumular caractere que não seja
+// dígito, e nunca deixa existir mais de um separador decimal (vírgula OU
+// ponto, o que vier primeiro). Neutraliza qualquer valor estranho que tente
+// entrar no campo (autopreenchimento do navegador, colar texto sujo, etc.)
+// sem depender só de o navegador se comportar bem.
+document.addEventListener('input', (e) => {
+  if (!e.target.matches('input[inputmode="decimal"]')) return;
+  let v = e.target.value;
+  const limpo = v.replace(/[^0-9.,]/g, '');
+  let semSeparadorDuplicado = limpo;
+  const idxSeparador = limpo.search(/[.,]/);
+  if (idxSeparador !== -1) {
+    const antes = limpo.slice(0, idxSeparador + 1);
+    const depois = limpo.slice(idxSeparador + 1).replace(/[.,]/g, '');
+    semSeparadorDuplicado = antes + depois;
+  }
+  if (semSeparadorDuplicado !== v) e.target.value = semSeparadorDuplicado;
+});
+
 // --- Modal genérico ---
 function openModal(title, bodyHtml, footerButtons) {
   document.getElementById('modal-title').textContent = title;
@@ -580,6 +600,18 @@ function openModal(title, bodyHtml, footerButtons) {
     footer.appendChild(btn);
   });
   document.getElementById('modal-backdrop').classList.add('visible');
+  // Camada extra de proteção: campo decimal que não tem um valor pré-definido
+  // no próprio HTML (não é edição de algo existente) começa SEMPRE vazio de
+  // verdade — nunca reaproveita nada que o navegador tente sugerir sozinho,
+  // nem na hora que abre, nem alguns instantes depois (autopreenchimento
+  // assíncrono de alguns navegadores).
+  const limparCamposVazios = () => {
+    document.querySelectorAll('#modal-body input[inputmode="decimal"]').forEach(inp => {
+      if (!inp.hasAttribute('value')) inp.value = '';
+    });
+  };
+  limparCamposVazios();
+  setTimeout(limparCamposVazios, 60);
 }
 function closeModal() { document.getElementById('modal-backdrop').classList.remove('visible'); }
 document.getElementById('modal-close').onclick = closeModal;
@@ -881,14 +913,14 @@ function openConfigModal() {
   const c = state.config;
   openModal('Editar configuração operacional', `
     <div class="field-row">
-      <div class="field"><label>Imposto padrão (%)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-imposto" value="${c.imposto_percentual}"></div>
-      <div class="field"><label>Custo/hora funcionário (R$)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-custo-hora" value="${(c.custo_hora_funcionario_centavos/100).toFixed(2)}"></div>
+      <div class="field"><label>Imposto padrão (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="cfg-imposto" value="${c.imposto_percentual}"></div>
+      <div class="field"><label>Custo/hora funcionário (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="cfg-custo-hora" value="${(c.custo_hora_funcionario_centavos/100).toFixed(2)}"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Margem alvo alta (%)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-margem-alta" value="${c.margem_alvo_alta}"></div>
-      <div class="field"><label>Margem alvo baixa (%)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-margem-baixa" value="${c.margem_alvo_baixa}"></div>
+      <div class="field"><label>Margem alvo alta (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="cfg-margem-alta" value="${c.margem_alvo_alta}"></div>
+      <div class="field"><label>Margem alvo baixa (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="cfg-margem-baixa" value="${c.margem_alvo_baixa}"></div>
     </div>
-    <div class="field"><label>Alíquota de imposto sobre lucro (%, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="cfg-aliquota" value="${c.aliquota_imposto_lucro ?? ''}" placeholder="Deixe em branco se não souber ainda"></div>
+    <div class="field"><label>Alíquota de imposto sobre lucro (%, opcional)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="cfg-aliquota" value="${c.aliquota_imposto_lucro ?? ''}" placeholder="Deixe em branco se não souber ainda"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: 'Salvar', cls: 'btn-primary', onClick: async () => {
@@ -961,9 +993,9 @@ async function openIngredientModal(id) {
           ${['kg','g','L','ml','un'].map(u => `<option value="${u}" ${ing.unidade_compra===u?'selected':''}>${u}</option>`).join('')}
         </select>
       </div>
-      <div class="field"><label>Perda no preparo (%)</label><input type="text" inputmode="decimal" step="0.01" id="ing-perda" value="${ing.perda_percentual}"></div>
+      <div class="field"><label>Perda no preparo (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="ing-perda" value="${ing.perda_percentual}"></div>
     </div>
-    <div class="field"><label>Estoque mínimo (opcional, alerta)</label><input type="text" inputmode="decimal" step="0.001" id="ing-estoque-min" value="${ing.estoque_minimo ?? ''}"></div>
+    <div class="field"><label>Estoque mínimo (opcional, alerta)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="ing-estoque-min" value="${ing.estoque_minimo ?? ''}"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
@@ -999,8 +1031,8 @@ async function openIngredientPriceModal(id, nome, unidade) {
 
   openModal(`Preço — ${esc(nome)}`, `
     <div class="field-row">
-      <div class="field"><label>Preço pago (R$)</label><input type="text" inputmode="decimal" step="0.01" id="price-valor" placeholder="Ex: 120.00"></div>
-      <div class="field"><label>Quantidade comprada (${unidade})</label><input type="text" inputmode="decimal" step="0.001" id="price-qtd" placeholder="Ex: 5"></div>
+      <div class="field"><label>Preço pago (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="price-valor" placeholder="Ex: 120.00"></div>
+      <div class="field"><label>Quantidade comprada (${unidade})</label><input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="price-qtd" placeholder="Ex: 5"></div>
     </div>
     <button class="btn btn-primary" onclick="registrarPrecoInsumo('${id}', '${esc(nome)}', '${unidade}')">Registrar novo preço</button>
     <hr class="divider">
@@ -1034,13 +1066,13 @@ async function openIngredientMovementsModal(id, nome) {
     <div class="grid-2">
       <div>
         <label>Registrar perda</label>
-        <input type="text" inputmode="decimal" step="0.001" id="mov-perda-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
+        <input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="mov-perda-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
         <input type="text" id="mov-perda-nota" placeholder="Motivo (obrigatório)" style="margin-bottom:6px;">
         <button class="btn btn-sm btn-danger btn-block" onclick="registrarMovimento('${id}', 'loss', '${esc(nome)}')">Registrar perda</button>
       </div>
       <div>
         <label>Consumo interno</label>
-        <input type="text" inputmode="decimal" step="0.001" id="mov-consumo-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
+        <input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="mov-consumo-qtd" placeholder="Quantidade" style="margin-bottom:6px;">
         <input type="text" id="mov-consumo-nota" placeholder="Motivo (obrigatório)" style="margin-bottom:6px;">
         <button class="btn btn-sm btn-secondary btn-block" onclick="registrarMovimento('${id}', 'internal-consumption', '${esc(nome)}')">Registrar consumo</button>
       </div>
@@ -1048,7 +1080,7 @@ async function openIngredientMovementsModal(id, nome) {
     <hr class="divider">
     <label>Ajuste (contagem física — define o saldo exato)</label>
     <div class="field-row">
-      <input type="text" inputmode="decimal" step="0.001" id="mov-ajuste-saldo" placeholder="Novo saldo total">
+      <input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="mov-ajuste-saldo" placeholder="Novo saldo total">
       <input type="text" id="mov-ajuste-nota" placeholder="Justificativa (obrigatória)">
     </div>
     <button class="btn btn-sm btn-primary" onclick="registrarAjuste('${id}', '${esc(nome)}')">Registrar ajuste</button>
@@ -1177,8 +1209,8 @@ function renderPurchaseModalBody(suppliers, ingredients) {
       <div class="field"><label>Insumo</label>
         <select id="purch-item-ingredient">${ingredients.map(i => `<option value="${i.id}">${esc(i.nome)} (${i.unidade_compra})</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" step="0.001" id="purch-item-qtd"></div>
-      <div class="field"><label>Preço total (R$)</label><input type="text" inputmode="decimal" step="0.01" id="purch-item-preco"></div>
+      <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="purch-item-qtd"></div>
+      <div class="field"><label>Preço total (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="purch-item-preco"></div>
     </div>
     <button class="btn btn-sm btn-secondary" onclick="addPurchaseItem()">Adicionar à compra</button>
     <hr class="divider">
@@ -1186,8 +1218,8 @@ function renderPurchaseModalBody(suppliers, ingredients) {
     <div id="purch-itens-list">${itensHtml}</div>
     <hr class="divider">
     <div class="field-row">
-      <div class="field"><label>Frete total (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="purch-frete" value="0"></div>
-      <div class="field"><label>Outros custos (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="purch-outros" value="0"></div>
+      <div class="field"><label>Frete total (R$, opcional)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="purch-frete" value="0"></div>
+      <div class="field"><label>Outros custos (R$, opcional)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="purch-outros" value="0"></div>
     </div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1249,7 +1281,7 @@ SECTION_RENDERERS['fichas-tecnicas'] = async function () {
 async function openRecipeCreateModal() {
   openModal('Nova ficha técnica', `
     <div class="field"><label>Nome</label><input type="text" id="rec-nome" placeholder="Ex: Receita X-Burger"></div>
-    <div class="field"><label>Tempo de preparo em minutos (opcional)</label><input type="text" inputmode="decimal" step="0.1" id="rec-tempo"></div>
+    <div class="field"><label>Tempo de preparo em minutos (opcional)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.1" id="rec-tempo"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: 'Criar', cls: 'btn-primary', onClick: async () => {
@@ -1282,7 +1314,7 @@ async function openRecipeDetailModal(id) {
       <div class="field"><label>Insumo</label>
         <select id="rec-item-ingredient">${ingredients.map(i => `<option value="${i.id}">${esc(i.nome)}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Quantidade (unidade-base)</label><input type="text" inputmode="decimal" step="0.001" id="rec-item-qtd" placeholder="g, ml ou un"></div>
+      <div class="field"><label>Quantidade (unidade-base)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="rec-item-qtd" placeholder="g, ml ou un"></div>
     </div>
     <button class="btn btn-sm btn-secondary" onclick="addRecipeItem('${id}')">Adicionar à receita</button>
   `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('fichas-tecnicas'); } }]);
@@ -1355,7 +1387,7 @@ async function openProductCreateModal() {
       <div class="field"><label>Unidade de venda</label>
         <select id="prod-unidade-venda">${['un','kg','g','L','ml'].map(u => `<option value="${u}">${u}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Embalagem (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="prod-embalagem" value="0"></div>
+      <div class="field"><label>Embalagem (R$, opcional)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="prod-embalagem" value="0"></div>
     </div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1398,7 +1430,7 @@ async function openProductDetailModal(id) {
       <div>${itensHtml}</div>
       <div class="field-row" style="margin-top:10px;">
         <div class="field"><label>Adicionar produto</label><select id="combo-item-product">${others.map(o => `<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>
-        <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" step="1" id="combo-item-qtd" value="1"></div>
+        <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" autocomplete="off" step="1" id="combo-item-qtd" value="1"></div>
       </div>
       <button class="btn btn-sm btn-secondary" onclick="addComboItem('${id}')">Adicionar ao combo</button>`;
   } else if (p.tipo === 'pizza_fracionada') {
@@ -1413,7 +1445,7 @@ async function openProductDetailModal(id) {
       <div>${itensHtml}</div>
       <div class="field-row" style="margin-top:10px;">
         <div class="field"><label>Sabor (produto simples)</label><select id="pizza-sabor-product">${sabores.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('')}</select></div>
-        <div class="field"><label>Fração (ex: 0.5 = metade)</label><input type="text" inputmode="decimal" step="0.01" min="0.01" max="1" id="pizza-sabor-fracao" value="0.5"></div>
+        <div class="field"><label>Fração (ex: 0.5 = metade)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" min="0.01" max="1" id="pizza-sabor-fracao" value="0.5"></div>
       </div>
       <button class="btn btn-sm btn-secondary" onclick="addPizzaSabor('${id}')">Adicionar sabor</button>`;
   } else {
@@ -1430,7 +1462,7 @@ async function openProductDetailModal(id) {
     <div id="product-pricing-list">Carregando…</div>
     <div class="field-row">
       <div class="field"><label>Canal</label><select id="pricing-channel"></select></div>
-      <div class="field"><label>Margem desejada (%)</label><input type="text" inputmode="decimal" step="0.01" id="pricing-margem" value="30"></div>
+      <div class="field"><label>Margem desejada (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="pricing-margem" value="30"></div>
     </div>
     <button class="btn btn-sm btn-secondary" onclick="createProductPricing('${id}')">Precificar neste canal</button>
   `, [{ label: 'Fechar', cls: 'btn-secondary', onClick: () => { closeModal(); goToSection('produtos'); } }]);
@@ -1527,10 +1559,10 @@ async function openChannelModal(id) {
   openModal(id ? 'Editar canal' : 'Novo canal', `
     <div class="field"><label>Nome</label><input type="text" id="ch-nome" value="${esc(c.nome)}" placeholder="Ex: iFood"></div>
     <div class="field-row">
-      <div class="field"><label>Taxa percentual (%)</label><input type="text" inputmode="decimal" step="0.01" id="ch-taxa-pct" value="${c.taxa_percentual}"></div>
-      <div class="field"><label>Taxa fixa por pedido (R$)</label><input type="text" inputmode="decimal" step="0.01" id="ch-taxa-fixa" value="${(c.taxa_fixa_centavos/100).toFixed(2)}"></div>
+      <div class="field"><label>Taxa percentual (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="ch-taxa-pct" value="${c.taxa_percentual}"></div>
+      <div class="field"><label>Taxa fixa por pedido (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="ch-taxa-fixa" value="${(c.taxa_fixa_centavos/100).toFixed(2)}"></div>
     </div>
-    <div class="field"><label>Imposto próprio (%, opcional — senão usa o padrão do negócio)</label><input type="text" inputmode="decimal" step="0.01" id="ch-imposto" value="${c.imposto_override_percentual ?? ''}"></div>
+    <div class="field"><label>Imposto próprio (%, opcional — senão usa o padrão do negócio)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="ch-imposto" value="${c.imposto_override_percentual ?? ''}"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
@@ -1592,7 +1624,7 @@ async function openSaleModal() {
   openModal('Registrar venda', `
     <div class="field"><label>Produto</label><select id="sale-product">${ativos.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
     <div class="field"><label>Canal</label><select id="sale-channel">${channels.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
-    <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" step="0.001" id="sale-qtd" value="1"></div>
+    <div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="sale-qtd" value="1"></div>
     <div class="checkbox-row"><input type="checkbox" id="sale-redondo"> <label style="margin:0;">Usar preço redondo (arredondado pra ,90)</label></div>
     <p class="hint">O preço vem da precificação já configurada para este produto neste canal — se não houver, a venda é rejeitada.</p>
   `, [
@@ -1632,7 +1664,7 @@ async function viewSaleDetail(id) {
     ${devolucoes.length ? devolucoes.map(d => `<div class="receipt-line"><span class="label">${fmtDate(d.criado_em)} — ${esc(d.motivo)}</span><span class="value">${d.quantidade_devolvida}</span></div>`).join('') : '<p class="hint">Nenhuma devolução.</p>'}
     ${s.status === 'confirmada' ? `
     <div class="field-row" style="margin-top:10px;">
-      <input type="text" inputmode="decimal" step="0.001" id="return-qtd" placeholder="Qtd a devolver">
+      <input type="text" inputmode="decimal" autocomplete="off" step="0.001" id="return-qtd" placeholder="Qtd a devolver">
       <input type="text" id="return-motivo" placeholder="Motivo">
     </div>
     <button class="btn btn-sm btn-secondary" onclick="registrarDevolucao('${id}')">Registrar devolução parcial</button>` : ''}
@@ -1722,11 +1754,11 @@ async function openPromotionModal() {
         <option value="valor_fixo">Valor fixo</option>
       </select>
     </div>
-    <div class="field" id="promo-pct-field"><label>Desconto (%)</label><input type="text" inputmode="decimal" step="0.01" id="promo-desconto-pct" value="10"></div>
-    <div class="field" id="promo-fixo-field" style="display:none;"><label>Desconto (R$)</label><input type="text" inputmode="decimal" step="0.01" id="promo-desconto-fixo"></div>
+    <div class="field" id="promo-pct-field"><label>Desconto (%)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="promo-desconto-pct" value="10"></div>
+    <div class="field" id="promo-fixo-field" style="display:none;"><label>Desconto (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="promo-desconto-fixo"></div>
     <div class="field-row">
-      <div class="field"><label>% que o canal banca do desconto</label><input type="text" inputmode="decimal" step="0.01" id="promo-pct-canal" value="0"></div>
-      <div class="field"><label>Subsídio máximo (R$, opcional)</label><input type="text" inputmode="decimal" step="0.01" id="promo-subsidio-max"></div>
+      <div class="field"><label>% que o canal banca do desconto</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="promo-pct-canal" value="0"></div>
+      <div class="field"><label>Subsídio máximo (R$, opcional)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="promo-subsidio-max"></div>
     </div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
@@ -1790,7 +1822,7 @@ async function openFixedCostModal(id) {
   if (id) f = await api(`/fixed-costs/${id}`);
   openModal(id ? 'Editar custo fixo' : 'Novo custo fixo', `
     <div class="field"><label>Nome</label><input type="text" id="fc-nome" value="${esc(f.nome)}" placeholder="Ex: Aluguel"></div>
-    <div class="field"><label>Valor mensal (R$)</label><input type="text" inputmode="decimal" step="0.01" id="fc-valor" value="${(f.valor_mensal_centavos/100).toFixed(2)}"></div>
+    <div class="field"><label>Valor mensal (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="fc-valor" value="${(f.valor_mensal_centavos/100).toFixed(2)}"></div>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
     { label: id ? 'Salvar' : 'Criar', cls: 'btn-primary', onClick: async () => {
@@ -1831,7 +1863,7 @@ async function openExpenseModal() {
       <select id="exp-tipo"><option value="financeira">Financeira (juros, taxas)</option><option value="nao_operacional">Não-operacional</option></select>
     </div>
     <div class="field"><label>Nome</label><input type="text" id="exp-nome" placeholder="Ex: Juros do empréstimo"></div>
-    <div class="field"><label>Valor (R$)</label><input type="text" inputmode="decimal" step="0.01" id="exp-valor"></div>
+    <div class="field"><label>Valor (R$)</label><input type="text" inputmode="decimal" autocomplete="off" step="0.01" id="exp-valor"></div>
     <p class="hint">Sempre vinculada ao período financeiro aberto agora.</p>
   `, [
     { label: 'Cancelar', cls: 'btn-secondary', onClick: closeModal },
